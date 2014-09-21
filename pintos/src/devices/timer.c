@@ -30,6 +30,9 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+static struct lock tick_lock;  //Comment
+static struct condition tick_conditional;
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -37,6 +40,9 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+
+  lock_init(&tick_lock);  //Comment
+  cond_init(&tick_conditional);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -92,8 +98,12 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  lock_acquire(&tick_lock);
+  while (timer_elapsed (start) < ticks) {
+    //thread_yield ();
+    cond_wait(&tick_conditional, &tick_lock);
+  }
+  lock_release(&tick_lock);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,6 +181,9 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  lock_acquire(&tick_lock);
+  cond_broadcast(&tick_conditional, &tick_lock);
+  lock_release(&tick_lock);
   thread_tick ();
 }
 
