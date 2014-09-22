@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/malloc.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -30,8 +31,16 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
-static struct lock tick_lock;  //Comment
-static struct condition tick_conditional;
+//static struct lock tick_lock;  //Comment
+//static struct condition tick_conditional;
+
+struct wait_elem {
+  struct list_elem elem;
+  struct thread *waiting_thread;
+  int64_t waiting_time;
+};
+
+static struct list wait_list;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -41,8 +50,10 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 
-  lock_init(&tick_lock);  //Comment
-  cond_init(&tick_conditional);
+  //lock_init(&tick_lock);  //Comment
+  //cond_init(&tick_conditional);
+  list_init(&wait_list);
+
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -95,8 +106,10 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
 
+  int64_t end = timer_ticks () + ticks;
+
+  /*
   ASSERT (intr_get_level () == INTR_ON);
   lock_acquire(&tick_lock);
   while (timer_elapsed (start) < ticks) {
@@ -104,6 +117,20 @@ timer_sleep (int64_t ticks)
     cond_wait(&tick_conditional, &tick_lock);
   }
   lock_release(&tick_lock);
+  */
+
+  enum intr_level old_level = intr_disable ();
+  struct wait_elem *this_waiter = malloc(sizeof(struct wait_elem));
+  if (this_waiter = NULL) {
+    //exit();
+  }
+  
+  this_waiter->waiting_thread = thread_current();
+  this_waiter->waiting_time = end;
+  list_push_back(&wait_list, &this_waiter->elem);
+  intr_set_level (old_level);
+  thread_block();
+
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -181,9 +208,32 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  lock_acquire(&tick_lock);
-  cond_broadcast(&tick_conditional, &tick_lock);
-  lock_release(&tick_lock);
+
+  struct list_elem *e = list_begin(&wait_list);
+  struct list_elem *temp_e;
+  struct wait_elem *temp;
+  while(e != list_end(&wait_list)) {
+    temp = list_entry(e, struct wait_elem, elem);
+    if (temp->waiting_time <= ticks) {
+      temp_e = e;
+      e = list_next(e);
+      list_remove(temp_e);
+      thread_unblock(temp->waiting_thread);
+      free(temp);
+    } else{
+      e = list_next(e);
+    }
+  }
+
+
+  //lock_acquire(&tick_lock);
+  /*
+  if (lock_try_acquire(&tick_lock)) {
+    cond_broadcast(&tick_conditional, &tick_lock);
+    lock_release(&tick_lock);
+  }
+  */
+
   thread_tick ();
 }
 
