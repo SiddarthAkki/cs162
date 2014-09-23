@@ -108,29 +108,40 @@ timer_sleep (int64_t ticks)
 {
 
   int64_t end = timer_ticks () + ticks;
+  //int64_t start = timer_ticks ();
+  
+  //ASSERT (intr_get_level () == INTR_ON);
+  //lock_acquire(&tick_lock);
 
-  /*
-  ASSERT (intr_get_level () == INTR_ON);
-  lock_acquire(&tick_lock);
-  while (timer_elapsed (start) < ticks) {
+  //while (timer_elapsed (start) < ticks) {
     //thread_yield ();
-    cond_wait(&tick_conditional, &tick_lock);
-  }
+    //cond_wait(&tick_conditional, &tick_lock);
+  //}
+    /*
   lock_release(&tick_lock);
   */
 
-  enum intr_level old_level = intr_disable ();
+  enum intr_level old_level;
+  old_level = intr_disable ();
   struct wait_elem *this_waiter = malloc(sizeof(struct wait_elem));
+  
+    /*
   if (this_waiter = NULL) {
     //exit();
   }
-  
-  this_waiter->waiting_thread = thread_current();
-  this_waiter->waiting_time = end;
-  list_push_back(&wait_list, &this_waiter->elem);
-  intr_set_level (old_level);
-  thread_block();
+  */
 
+  
+  struct thread * t = thread_current();
+  this_waiter->waiting_thread = t;
+  this_waiter->waiting_time = end;
+  
+  
+  list_push_back(&wait_list, &this_waiter->elem);
+  
+  thread_block();
+  intr_set_level (old_level);
+  
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -209,18 +220,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
 
+  
   struct list_elem *e = list_begin(&wait_list);
   struct list_elem *temp_e;
   struct wait_elem *temp;
-  while(e != list_end(&wait_list)) {
+
+    
+  while(e != list_end(&wait_list)) 
+  {
     temp = list_entry(e, struct wait_elem, elem);
-    if (temp->waiting_time <= ticks) {
-      temp_e = e;
-      e = list_next(e);
-      list_remove(temp_e);
+    
+      if (temp->waiting_time <= ticks) {
+      e = list_remove(e);
       thread_unblock(temp->waiting_thread);
-      free(temp);
-    } else{
+      //free(temp);
+    }
+     
+    else{
       e = list_next(e);
     }
   }
