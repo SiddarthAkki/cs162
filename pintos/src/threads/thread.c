@@ -201,6 +201,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  if (!intr_context() && thread_current()->priority < priority) {
+    thread_yield();
+  }
+
   return tid;
 }
 
@@ -239,7 +243,14 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
+
   intr_set_level (old_level);
+
+  //added
+  //if (thread_current()->priority < t->priority) {
+  //  thread_yield();
+  //}
+
 }
 
 /* Returns the name of the running thread. */
@@ -336,6 +347,27 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+
+  //added
+  int max_priority = PRI_MIN - 1;
+
+  struct thread * curr_thread;
+  struct list_elem *curr = list_begin(&ready_list);
+
+  struct list_elem *tail = list_tail(&ready_list);
+
+  while (curr != tail) {
+    curr_thread = list_entry (curr, struct thread, elem);
+    if (curr_thread->priority >= max_priority) {
+      max_priority = curr_thread->priority;
+    }
+    curr = list_next(curr);
+  }
+
+  if (new_priority < max_priority) {
+    thread_yield();
+  }
+
 }
 
 /* Returns the current thread's priority. */
@@ -492,8 +524,30 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  else {
+    //added
+    struct thread *max_thread;
+    int max_priority = PRI_MIN - 1;
+
+    struct thread * curr_thread;
+    struct list_elem *curr = list_begin(&ready_list);
+
+    struct list_elem *tail = list_tail(&ready_list);
+
+    while (curr != tail) {
+      curr_thread = list_entry (curr, struct thread, elem);
+      if (curr_thread->priority >= max_priority) {
+        max_thread = curr_thread;
+        max_priority = curr_thread->priority;
+      }
+      curr = list_next(curr);
+    }
+
+    list_remove(&max_thread->elem);
+    return max_thread;
+
+    //return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
