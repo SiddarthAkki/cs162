@@ -116,6 +116,7 @@ sema_up (struct semaphore *sema)
   int max_priority = PRI_MIN - 1;
 
   old_level = intr_disable ();
+  
   //added
   if (!list_empty (&sema->waiters)) {
 
@@ -127,7 +128,7 @@ sema_up (struct semaphore *sema)
 
     while (curr != tail) {
       curr_thread = list_entry (curr, struct thread, elem);
-      if (curr_thread->priority >= max_priority) {
+      if (curr_thread->priority > max_priority) {
         max_thread = curr_thread;
         max_priority = curr_thread->priority;
       }
@@ -366,7 +367,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 
       thread_list_elem = list_begin(&(&curr_sema_elem->semaphore)->waiters);
 
-      if (list_entry(thread_list_elem, struct thread, elem)->priority >= max_priority) {
+      if (list_entry(thread_list_elem, struct thread, elem)->priority > max_priority) {
         max_sema_elem = curr_sema_elem;
         max_priority = list_entry(thread_list_elem, struct thread, elem)->priority;
       }
