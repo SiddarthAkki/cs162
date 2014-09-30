@@ -70,6 +70,9 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static bool priority_compare(const struct list_elem *thr_elem_a,
+                             const struct list_elem *thr_elem_b,
+                             void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -347,7 +350,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-
+    
   //added
   int max_priority = PRI_MIN - 1;
 
@@ -526,6 +529,8 @@ next_thread_to_run (void)
     return idle_thread;
   else {
     //added
+      
+    /*
     struct thread *max_thread;
     int max_priority = PRI_MIN - 1;
 
@@ -536,7 +541,7 @@ next_thread_to_run (void)
 
     while (curr != tail) {
       curr_thread = list_entry (curr, struct thread, elem);
-      if (curr_thread->priority >= max_priority) {
+      if (curr_thread->priority > max_priority) {
         max_thread = curr_thread;
         max_priority = curr_thread->priority;
       }
@@ -545,9 +550,33 @@ next_thread_to_run (void)
 
     list_remove(&max_thread->elem);
     return max_thread;
-
-    //return list_entry (list_pop_front (&ready_list), struct thread, elem);
+*/
+      
+      
+      struct list_elem * thread_elem = list_max(&ready_list, priority_compare, NULL);
+      list_remove (thread_elem);
+      
+      
+    struct thread * new_thread = list_entry (thread_elem, struct thread, elem);
+      ASSERT(is_thread(new_thread));
+      return new_thread;
+       
+      
+      //return list_entry (list_pop_front (&ready_list), struct thread, elem);
   }
+}
+
+/* Compares the priorities of threads a and b and returns true if the priority of a is less than that of b, false otherwise. */
+static bool priority_compare(const struct list_elem *thr_elem_a,
+                              const struct list_elem *thr_elem_b,
+                              void *aux UNUSED) {
+    ASSERT(is_thread(list_entry(thr_elem_a, struct thread,elem)));
+    int priority_a = list_entry(thr_elem_a, struct thread,elem)->priority;
+    int priority_b = list_entry(thr_elem_b, struct thread, elem)->priority;
+    //return true;
+    //printf("priority_a: %d\n", priority_a);
+    //printf("priority_b: %d\n", priority_b);
+    return priority_a < priority_b ? true : false;
 }
 
 /* Completes a thread switch by activating the new thread's page

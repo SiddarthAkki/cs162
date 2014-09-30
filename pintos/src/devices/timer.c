@@ -222,10 +222,10 @@ timer_interrupt (struct intr_frame *args UNUSED)
     temp = list_entry(e, struct wait_elem, elem);
     
     if (temp->waiting_time <= ticks) {
-      temp_e = list_next(e);
+      //temp_e = list_next(e);
       e = list_remove(e);
       thread_unblock(temp->waiting_thread);
-      e = temp_e;
+      //e = temp_e;
     }
     else{
       //e = list_next(e);
