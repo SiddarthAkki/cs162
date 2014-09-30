@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/malloc.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -29,6 +30,20 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+static bool wait_time_compare (const struct list_elem *thread_a,
+			       const struct list_elem *thread_b,
+			       void *aux);
+
+//static struct lock tick_lock;  //Comment
+//static struct condition tick_conditional;
+
+struct wait_elem {
+  struct list_elem elem;
+  struct thread *waiting_thread;
+  int64_t waiting_time;
+};
+
+static struct list wait_list;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -37,6 +52,11 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+
+  //lock_init(&tick_lock);  //Comment
+  //cond_init(&tick_conditional);
+  list_init(&wait_list);
+
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -89,11 +109,21 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  int64_t end = timer_ticks () + ticks;
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  struct wait_elem *this_waiter = malloc(sizeof(struct wait_elem));
+  
+  struct thread * t = thread_current();
+  this_waiter->waiting_thread = t;
+  this_waiter->waiting_time = end;
+  
+  list_insert_ordered(&wait_list, &this_waiter->elem, &wait_time_compare, NULL);
+  thread_block();
+  intr_set_level (old_level);
+  free(this_waiter);
+  
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,12 +195,44 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
+
+/* Compares the wait times of threads a and b (both of which have called thread_sleep)
+   and returns true if the wait time of a is less than that of b, false otherwise. */
+static bool wait_time_compare(const struct list_elem *thread_a,
+			   const struct list_elem *thread_b,
+			   void *aux UNUSED) {
+  int64_t size_a = list_entry(thread_a, struct wait_elem, elem)->waiting_time;
+  int64_t size_b = list_entry(thread_b, struct wait_elem, elem)->waiting_time;
+  return size_a < size_b ? true : false;
+}
+
 
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+
+  struct list_elem *e = list_begin(&wait_list);
+  struct list_elem *temp_e;
+  struct wait_elem *temp;
+
+  while(e != list_end(&wait_list)) 
+  {
+    temp = list_entry(e, struct wait_elem, elem);
+    
+    if (temp->waiting_time <= ticks) {
+      //temp_e = list_next(e);
+      e = list_remove(e);
+      thread_unblock(temp->waiting_thread);
+      //e = temp_e;
+    }
+    else{
+      //e = list_next(e);
+      break;
+    }
+  }
+
   thread_tick ();
 }
 
