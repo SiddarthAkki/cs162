@@ -249,11 +249,6 @@ thread_unblock (struct thread *t)
 
   intr_set_level (old_level);
 
-  //added
-  //if (thread_current()->priority < t->priority) {
-  //  thread_yield();
-  //}
-
 }
 
 /* Returns the name of the running thread. */
@@ -361,7 +356,7 @@ thread_set_priority (int new_priority)
 
   while (curr != tail) {
     curr_thread = list_entry (curr, struct thread, elem);
-    if (curr_thread->priority >= max_priority) {
+    if (curr_thread->priority > max_priority) {
       max_priority = curr_thread->priority;
     }
     curr = list_next(curr);
