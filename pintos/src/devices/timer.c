@@ -37,11 +37,13 @@ static bool wait_time_compare (const struct list_elem *thread_a,
 //static struct lock tick_lock;  //Comment
 //static struct condition tick_conditional;
 
+/*
 struct wait_elem {
   struct list_elem elem;
   struct thread *waiting_thread;
   int64_t waiting_time;
 };
+*/
 
 static struct list wait_list;
 
@@ -109,20 +111,24 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t end = timer_ticks () + ticks;
+  int64_t end_wait = timer_ticks () + ticks;
 
   enum intr_level old_level;
   old_level = intr_disable ();
-  struct wait_elem *this_waiter = malloc(sizeof(struct wait_elem));
+  //struct wait_elem *this_waiter = malloc(sizeof(struct wait_elem));
   
   struct thread * t = thread_current();
+    /*
   this_waiter->waiting_thread = t;
   this_waiter->waiting_time = end;
+     */
+    t->waiting_time = end_wait;
   
-  list_insert_ordered(&wait_list, &this_waiter->elem, &wait_time_compare, NULL);
+  //list_insert_ordered(&wait_list, &this_waiter->elem, &wait_time_compare, NULL);
+    list_insert_ordered(&wait_list, &t->elem, &wait_time_compare, NULL);
   thread_block();
   intr_set_level (old_level);
-  free(this_waiter);
+  //free(this_waiter);
   
 }
 
@@ -196,8 +202,10 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
+
 /* Compares the wait times of threads a and b (both of which have called thread_sleep)
    and returns true if the wait time of a is less than that of b, false otherwise. */
+/*
 static bool wait_time_compare(const struct list_elem *thread_a,
 			   const struct list_elem *thread_b,
 			   void *aux UNUSED) {
@@ -205,7 +213,14 @@ static bool wait_time_compare(const struct list_elem *thread_a,
   int64_t size_b = list_entry(thread_b, struct wait_elem, elem)->waiting_time;
   return size_a < size_b ? true : false;
 }
-
+*/
+static bool wait_time_compare(const struct list_elem *thread_a,
+                              const struct list_elem *thread_b,
+                              void *aux UNUSED) {
+    int64_t size_a = list_entry(thread_a, struct thread, elem)->waiting_time;
+    int64_t size_b = list_entry(thread_b, struct thread, elem)->waiting_time;
+    return size_a < size_b ? true : false;
+}
 
 /* Timer interrupt handler. */
 static void
@@ -213,18 +228,20 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
 
-  struct list_elem *e = list_begin(&wait_list);
-  struct list_elem *temp_e;
-  struct wait_elem *temp;
-
-  while(e != list_end(&wait_list)) 
-  {
-    temp = list_entry(e, struct wait_elem, elem);
+  struct list_elem *thr_elem = list_begin(&wait_list);
+  //struct list_elem *temp_e;
+  //struct wait_elem *temp;
+    struct thread * curr_thr;
     
-    if (temp->waiting_time <= ticks) {
+  while(thr_elem != list_end(&wait_list))
+  {
+    //temp = list_entry(e, struct wait_elem, elem);
+    curr_thr = list_entry(thr_elem, struct thread, elem);
+    if (curr_thr->waiting_time <= ticks) {
       //temp_e = list_next(e);
-      e = list_remove(e);
-      thread_unblock(temp->waiting_thread);
+      thr_elem = list_remove(thr_elem);
+      //thread_unblock(temp->waiting_thread);
+        thread_unblock(curr_thr);
       //e = temp_e;
     }
     else{
