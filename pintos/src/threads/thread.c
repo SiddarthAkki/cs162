@@ -347,20 +347,12 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
     
   //added
-  int max_priority = PRI_MIN - 1;
+  int max_priority;
 
-  struct thread * curr_thread;
-  struct list_elem *curr = list_begin(&ready_list);
-
-  struct list_elem *tail = list_tail(&ready_list);
-
-  while (curr != tail) {
-    curr_thread = list_entry (curr, struct thread, elem);
-    if (curr_thread->priority > max_priority) {
-      max_priority = curr_thread->priority;
-    }
-    curr = list_next(curr);
-  }
+  struct thread * max_thread;
+  struct list_elem *max = list_max(&ready_list, &priority_compare, NULL);
+  max_thread = list_entry(max, struct thread, elem);
+  max_priority = max_thread->priority;
 
   if (new_priority < max_priority) {
     thread_yield();

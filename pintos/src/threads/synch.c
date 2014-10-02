@@ -101,6 +101,19 @@ sema_try_down (struct semaphore *sema)
   return success;
 }
 
+/* Used to find the largest priority thread, waiting on a sema,
+to wake up
+*/
+
+static bool priority_compare(const struct list_elem *thread_a,
+                              const struct list_elem *thread_b,
+                              void *aux) {
+    int size_a = list_entry(thread_a, struct thread, elem)->priority;
+    int size_b = list_entry(thread_b, struct thread, elem)->priority;
+    //printf("1: %d, 2: %d\n", size_a, size_b);
+    return size_a <= size_b ? true : false;
+}
+
 /* Up or "V" operation on a semaphore.  Increments SEMA's value
    and wakes up one thread of those waiting for SEMA, if any.
 
@@ -121,19 +134,9 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters)) {
 
     struct thread *max_thread;
-    struct thread * curr_thread;
-    struct list_elem *curr = list_begin(&sema->waiters);
-
-    struct list_elem *tail = list_tail(&sema->waiters);
-
-    while (curr != tail) {
-      curr_thread = list_entry (curr, struct thread, elem);
-      if (curr_thread->priority > max_priority) {
-        max_thread = curr_thread;
-        max_priority = curr_thread->priority;
-      }
-      curr = list_next(curr);
-    }
+    struct list_elem *max = list_max(&sema->waiters, &priority_compare, NULL);
+    max_thread = list_entry(max, struct thread, elem);
+    max_priority = max_thread->priority;
     list_remove(&max_thread->elem);
     thread_unblock(max_thread);
   }
@@ -335,6 +338,28 @@ cond_wait (struct condition *cond, struct lock *lock)
   lock_acquire (lock);
 }
 
+/* Used to find the largest priority thread waiting on COND
+*/
+static bool cond_priority_compare(const struct list_elem *thread_a,
+                              const struct list_elem *thread_b,
+                              void *aux) {
+    struct semaphore_elem *first_sema_elem;
+    struct semaphore_elem *second_sema_elem;
+
+    first_sema_elem = list_entry (thread_a, struct semaphore_elem, elem);
+    second_sema_elem = list_entry (thread_b, struct semaphore_elem, elem);
+
+    struct list_elem *first_thread_list_elem;
+    struct list_elem *second_thread_list_elem;
+
+    first_thread_list_elem = list_begin(&(&first_sema_elem->semaphore)->waiters);
+    second_thread_list_elem = list_begin(&(&second_sema_elem->semaphore)->waiters);
+
+    int size_a = list_entry(first_thread_list_elem, struct thread, elem)->priority;
+    int size_b = list_entry(second_thread_list_elem, struct thread, elem)->priority;
+    return size_a <= size_b ? true : false;
+}
+
 /* If any threads are waiting on COND (protected by LOCK), then
    this function signals one of them to wake up from its wait.
    LOCK must be held before calling this function.
@@ -342,6 +367,7 @@ cond_wait (struct condition *cond, struct lock *lock)
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to signal a condition variable within an
    interrupt handler. */
+
 void
 cond_signal (struct condition *cond, struct lock *lock UNUSED) 
 {
@@ -355,24 +381,9 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
     int max_priority = PRI_MIN - 1;
     struct semaphore_elem *max_sema_elem;
 
-    struct semaphore_elem *curr_sema_elem;
-    struct list_elem *curr = list_begin(&cond->waiters);
+    struct list_elem *max = list_max(&cond->waiters, &cond_priority_compare, NULL);
+    max_sema_elem = list_entry(max, struct semaphore_elem, elem);
 
-    struct list_elem *tail = list_tail(&cond->waiters);
-
-    struct list_elem *thread_list_elem;
-
-    while (curr != tail) {
-      curr_sema_elem = list_entry (curr, struct semaphore_elem, elem);
-
-      thread_list_elem = list_begin(&(&curr_sema_elem->semaphore)->waiters);
-
-      if (list_entry(thread_list_elem, struct thread, elem)->priority > max_priority) {
-        max_sema_elem = curr_sema_elem;
-        max_priority = list_entry(thread_list_elem, struct thread, elem)->priority;
-      }
-      curr = list_next(curr);
-    }
     list_remove(&max_sema_elem->elem);
     sema_up(&max_sema_elem->semaphore);
   }
