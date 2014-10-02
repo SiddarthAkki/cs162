@@ -107,7 +107,7 @@ to wake up
 
 static bool priority_compare(const struct list_elem *thread_a,
                               const struct list_elem *thread_b,
-                              void *aux) {
+                              void *aux UNUSED) {
     int size_a = list_entry(thread_a, struct thread, elem)->priority;
     int size_b = list_entry(thread_b, struct thread, elem)->priority;
     //printf("1: %d, 2: %d\n", size_a, size_b);
@@ -342,7 +342,7 @@ cond_wait (struct condition *cond, struct lock *lock)
 */
 static bool cond_priority_compare(const struct list_elem *thread_a,
                               const struct list_elem *thread_b,
-                              void *aux) {
+                              void *aux UNUSED) {
     struct semaphore_elem *first_sema_elem;
     struct semaphore_elem *second_sema_elem;
 
@@ -378,7 +378,6 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 
   //added
   if (!list_empty (&cond->waiters)) {
-    int max_priority = PRI_MIN - 1;
     struct semaphore_elem *max_sema_elem;
 
     struct list_elem *max = list_max(&cond->waiters, &cond_priority_compare, NULL);
