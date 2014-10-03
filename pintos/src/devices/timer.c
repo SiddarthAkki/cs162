@@ -205,15 +205,7 @@ timer_print_stats (void)
 
 /* Compares the wait times of threads a and b (both of which have called thread_sleep)
    and returns true if the wait time of a is less than that of b, false otherwise. */
-/*
-static bool wait_time_compare(const struct list_elem *thread_a,
-			   const struct list_elem *thread_b,
-			   void *aux UNUSED) {
-  int64_t size_a = list_entry(thread_a, struct wait_elem, elem)->waiting_time;
-  int64_t size_b = list_entry(thread_b, struct wait_elem, elem)->waiting_time;
-  return size_a < size_b ? true : false;
-}
-*/
+
 static bool wait_time_compare(const struct list_elem *thread_a,
                               const struct list_elem *thread_b,
                               void *aux UNUSED) {
@@ -229,8 +221,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
 
   struct list_elem *thr_elem = list_begin(&wait_list);
-  //struct list_elem *temp_e;
-  //struct wait_elem *temp;
     struct thread * curr_thr;
     
   while(thr_elem != list_end(&wait_list))
