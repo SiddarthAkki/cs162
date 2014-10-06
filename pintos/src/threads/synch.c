@@ -233,13 +233,72 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  thread_current()->block_lock = lock;
-  struct lock *curr_lock;
-  
+  enum intr_level old_level = intr_disable ();
 
+  thread_current()->block_lock = lock;
+  struct lock *curr_lock = lock;
+  int donate_priority = thread_current()->max_priority;
+
+  int max_recurse = 8;
+  struct thread *curr_thread;
+  struct donation_elem *d_elem;
+
+  bool entry_found;
+
+  struct list_elem *curr_elem;
+  struct list_elem *elem_end;
+
+  if (lock->holder != NULL) {
+    while (max_recurse > 0) {
+
+      curr_thread = curr_lock->holder;
+
+      elem_end = list_back(curr_thread->donations);
+
+      curr_elem = list_begin(curr_thread->donations);
+      entry_found = false;
+
+      while (curr_elem != elem_end) {
+        d_elem = list_entry(curr_elem, donation_elem, elem);
+        if (d_elem->donating_lock == curr_lock) {
+          entry_found = true;
+          if (d_elem->donation_priority < donate_priority) {
+            d_elem->donation_priority = donate_priority;
+            break;
+          }
+        } else {
+          curr_elem = list_next(curr_elem);
+        }
+      }
+
+      if (!entry_found) {
+        d_elem = malloc(sizeof(donation_elem));
+        d_elem->donating_lock = curr_lock;
+        d_elem->donation_priority = donate_priority;
+      }
+
+      //list_push_front(curr_thread->donations, d_elem);
+
+      if (donation_priority > curr_thread->max_priority) {
+        curr_thread->max_priority = donation_priority;
+      }
+
+      if (curr_thread->block_lock == NULL) {
+        break;
+      } else {
+
+        curr_lock = curr_thread->block_lock;
+      }
+
+      max_recurse++;
+
+    }
+  }
 
   sema_down (&lock->semaphore);
+
   thread_current()->block_lock = NULL;
+  intr_set_level (old_level);
   lock->holder = thread_current ();
 }
 
