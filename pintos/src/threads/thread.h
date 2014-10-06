@@ -115,7 +115,7 @@ struct donation_elem {
     struct list_elem elem;
     struct lock *donating_lock;
     int donation_priority;
-}
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
