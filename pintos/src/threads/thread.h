@@ -88,12 +88,19 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+
+    int max_priority;                   /* Max Priority for the set of intrinsic and donated priorities*/
+    struct list donations;              /* Holds donated priorities. */
+    struct lock *block_lock;            /* The blocking lock you are waiting for replaces donated_to*/
+
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     
-      int waiting_time;                 /* End of wait time */
+    int waiting_time;                 /* End of wait time */
+
+
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -103,6 +110,12 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+struct donation_elem {
+    struct list_elem elem;
+    struct lock *donating_lock;
+    int donation_priority;
+}
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
