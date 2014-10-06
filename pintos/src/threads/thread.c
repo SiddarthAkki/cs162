@@ -70,7 +70,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-static bool priority_compare(const struct list_elem *thr_elem_a,
+static bool max_priority_compare(const struct list_elem *thr_elem_a,
                              const struct list_elem *thr_elem_b,
                              void *aux UNUSED);
 
@@ -200,6 +200,9 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  /* Instantiate donations list */
+  list_init(&(t->donations));
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -350,7 +353,7 @@ thread_set_priority (int new_priority)
   int max_priority;
 
   struct thread * max_thread;
-  struct list_elem *max = list_max(&ready_list, &priority_compare, NULL);
+  struct list_elem *max = list_max(&ready_list, &max_priority_compare, NULL);
   max_thread = list_entry(max, struct thread, elem);
   max_priority = max_thread->priority;
 
@@ -540,7 +543,7 @@ next_thread_to_run (void)
 */
       
       
-      struct list_elem * thread_elem = list_max(&ready_list, priority_compare, NULL);
+      struct list_elem * thread_elem = list_max(&ready_list, max_priority_compare, NULL);
       list_remove (thread_elem);
       
       
@@ -554,15 +557,12 @@ next_thread_to_run (void)
 }
 
 /* Compares the priorities of threads a and b and returns true if the priority of a is less than that of b, false otherwise. */
-static bool priority_compare(const struct list_elem *thr_elem_a,
+static bool max_priority_compare(const struct list_elem *thr_elem_a,
                               const struct list_elem *thr_elem_b,
                               void *aux UNUSED) {
     ASSERT(is_thread(list_entry(thr_elem_a, struct thread,elem)));
-    int priority_a = list_entry(thr_elem_a, struct thread,elem)->priority;
-    int priority_b = list_entry(thr_elem_b, struct thread, elem)->priority;
-    //return true;
-    //printf("priority_a: %d\n", priority_a);
-    //printf("priority_b: %d\n", priority_b);
+    int priority_a = list_entry(thr_elem_a, struct thread,elem)->max_priority;
+    int priority_b = list_entry(thr_elem_b, struct thread, elem)->max_priority;
     return priority_a < priority_b ? true : false;
 }
 

@@ -105,11 +105,11 @@ sema_try_down (struct semaphore *sema)
 to wake up
 */
 
-static bool priority_compare(const struct list_elem *thread_a,
+static bool max_priority_compare(const struct list_elem *thread_a,
                               const struct list_elem *thread_b,
                               void *aux UNUSED) {
-    int size_a = list_entry(thread_a, struct thread, elem)->priority;
-    int size_b = list_entry(thread_b, struct thread, elem)->priority;
+    int size_a = list_entry(thread_a, struct thread, elem)->max_priority;
+    int size_b = list_entry(thread_b, struct thread, elem)->max_priority;
     //printf("1: %d, 2: %d\n", size_a, size_b);
     return size_a <= size_b ? true : false;
 }
@@ -134,7 +134,7 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters)) {
 
     struct thread *max_thread;
-    struct list_elem *max = list_max(&sema->waiters, &priority_compare, NULL);
+    struct list_elem *max = list_max(&sema->waiters, &max_priority_compare, NULL);
     max_thread = list_entry(max, struct thread, elem);
     max_priority = max_thread->priority;
     list_remove(&max_thread->elem);
@@ -355,8 +355,8 @@ static bool cond_priority_compare(const struct list_elem *thread_a,
     first_thread_list_elem = list_begin(&(&first_sema_elem->semaphore)->waiters);
     second_thread_list_elem = list_begin(&(&second_sema_elem->semaphore)->waiters);
 
-    int size_a = list_entry(first_thread_list_elem, struct thread, elem)->priority;
-    int size_b = list_entry(second_thread_list_elem, struct thread, elem)->priority;
+    int size_a = list_entry(first_thread_list_elem, struct thread, elem)->max_priority;
+    int size_b = list_entry(second_thread_list_elem, struct thread, elem)->max_priority;
     return size_a <= size_b ? true : false;
 }
 
