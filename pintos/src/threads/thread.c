@@ -203,6 +203,8 @@ thread_create (const char *name, int priority,
 
   /* Instantiate donations list */
   list_init(&(t->donations));
+  t->block_lock = NULL;
+  t->max_priority = priority;
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -348,16 +350,20 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+
+  if (new_priority > thread_current()->max_priority) {
+    thread_current()->max_priority = new_priority;
+  }
     
   //added
-  int max_priority;
+  int list_max_priority;
 
   struct thread * max_thread;
   struct list_elem *max = list_max(&ready_list, &max_priority_compare, NULL);
   max_thread = list_entry(max, struct thread, elem);
-  max_priority = max_thread->priority;
+  list_max_priority = max_thread->priority;
 
-  if (new_priority < max_priority) {
+  if (new_priority < list_max_priority) {
     thread_yield();
   }
 
