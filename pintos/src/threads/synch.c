@@ -253,13 +253,13 @@ lock_acquire (struct lock *lock)
 
       curr_thread = curr_lock->holder;
 
-      elem_end = list_back(curr_thread->donations);
+      elem_end = list_back(&(curr_thread->donations));
 
-      curr_elem = list_begin(curr_thread->donations);
+      curr_elem = list_begin(&(curr_thread->donations));
       entry_found = false;
 
       while (curr_elem != elem_end) {
-        d_elem = list_entry(curr_elem, donation_elem, elem);
+        d_elem = list_entry(curr_elem, struct donation_elem, elem);
         if (d_elem->donating_lock == curr_lock) {
           entry_found = true;
           if (d_elem->donation_priority < donate_priority) {
@@ -272,15 +272,14 @@ lock_acquire (struct lock *lock)
       }
 
       if (!entry_found) {
-        d_elem = malloc(sizeof(donation_elem));
+        d_elem = malloc(sizeof(struct donation_elem));
         d_elem->donating_lock = curr_lock;
         d_elem->donation_priority = donate_priority;
+        list_push_front(&(curr_thread->donations), &d_elem->elem);
       }
 
-      //list_push_front(curr_thread->donations, d_elem);
-
-      if (donation_priority > curr_thread->max_priority) {
-        curr_thread->max_priority = donation_priority;
+      if (donate_priority > curr_thread->max_priority) {
+        curr_thread->max_priority = donate_priority;
       }
 
       if (curr_thread->block_lock == NULL) {
@@ -290,7 +289,7 @@ lock_acquire (struct lock *lock)
         curr_lock = curr_thread->block_lock;
       }
 
-      max_recurse++;
+      max_recurse--;
 
     }
   }
@@ -333,8 +332,62 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable ();
+
+  struct semaphore *curr_sem = &lock->semaphore;
+  //if (list_size(&lock->semaphore))
+  struct list *curr_wait = &curr_sem->waiters;
+
+  struct thread *max_thread;
+  struct thread *second_max_thread;
+
+  struct donation_elem *d_elem;
+
+  if (list_size(curr_wait) > 1) {
+    struct list_elem *max = list_max(curr_wait, &max_priority_compare, NULL);
+    max_thread = list_entry(max, struct thread, elem);
+    list_remove(&max_thread->elem);
+    max = list_max(curr_wait, &max_priority_compare, NULL);
+    second_max_thread = list_entry(max, struct thread, elem);
+
+    d_elem = malloc(sizeof(struct donation_elem));
+    d_elem->donating_lock = lock;
+    d_elem->donation_priority = second_max_thread->max_priority;
+    list_push_front(&max_thread->donations, &d_elem->elem);
+    list_push_front(curr_wait, &max_thread->elem);
+  }
+
+  //one element per lock
+
+  //free donation_elems in threads donations list that have a block_lock = lock
+  // struct thread *curr_thread = &lock->holder;
+
+  // struct list_elem *curr_elem;
+  // struct list_elem *elem_end;
+
+  // if (&curr_thread->donations != NULL) {
+  //   elem_end = list_back(&curr_thread->donations);
+
+  //   curr_elem = list_begin(&curr_thread->donations);
+  //   struct donation_elem *delete_elem;
+  //   //kernel panic when I try to iterate through the list of donations
+  //   while (curr_elem != elem_end) {
+  //     delete_elem = list_entry(curr_elem, struct donation_elem, elem);
+  //     if (delete_elem->donating_lock == lock) {
+  //       curr_elem = list_next(curr_elem);
+  //       //free(&d_elem);
+  //     } else {
+  //       curr_elem = list_next(curr_elem);
+  //     }
+  //   }
+  // }
+
+
+  intr_set_level (old_level);
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
 }
 
 /* Returns true if the current thread holds LOCK, false
