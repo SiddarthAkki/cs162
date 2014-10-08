@@ -91,6 +91,7 @@ struct thread
 
     int max_priority;                   /* Max Priority for the set of intrinsic and donated priorities*/
     struct list donations;              /* Holds donated priorities. */
+    struct donation_elem donations[8];
     struct lock *block_lock;            /* The blocking lock you are waiting for replaces donated_to*/
 
     struct list_elem allelem;           /* List element for all threads list. */
@@ -112,7 +113,6 @@ struct thread
   };
 
 struct donation_elem {
-    struct list_elem elem;
     struct lock *donating_lock;
     int donation_priority;
 };

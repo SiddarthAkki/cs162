@@ -73,9 +73,6 @@ static tid_t allocate_tid (void);
 static bool max_priority_compare(const struct list_elem *thr_elem_a,
                              const struct list_elem *thr_elem_b,
                              void *aux UNUSED);
-static bool donation_priority_compare(const struct list_elem *thr_elem_a,
-                              const struct list_elem *thr_elem_b,
-                              void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -363,18 +360,20 @@ thread_set_priority (int new_priority)
 
   //comment out if block 2 more tests pass
   
-
-  if (!list_empty(&thread_current()->donations)) {
-    struct list_elem *max_donate = list_max(&(thread_current()->donations), &donation_priority_compare, NULL);
-    struct donation_elem *max_donate_elem = list_entry(max_donate, struct donation_elem, elem);
-    if (new_priority < max_donate_elem->donation_priority) {
-      thread_current()->max_priority = max_donate_elem->donation_priority;
-    } else {
-      thread_current()->max_priority = new_priority;
+  struct donation_elem
+  int i = 0
+  int curr_max = new_priority
+  int curr_priority;
+  for (int i = 0; i < 8; i++) {
+    if (thread_current()->donations[i] != NULL) {
+      curr_priority = (thread_current()->donations[i]).donation_priority;
+      if (curr_priority > curr_max) {
+        curr_max = curr_priority;
+      }
     }
-  } else {
-    thread_current()->max_priority = new_priority;
   }
+
+  thread_current()->max_priority = curr_max;
 
   /*
   //Debug, you have to make sure that the ready list is not empty
@@ -394,15 +393,6 @@ thread_set_priority (int new_priority)
 
   thread_yield();
 
-}
-
-/* Compares the priorities of threads a and b and returns true if the priority of a is less than that of b, false otherwise. */
-static bool donation_priority_compare(const struct list_elem *thr_elem_a,
-                              const struct list_elem *thr_elem_b,
-                              void *aux UNUSED) {
-    int priority_a = list_entry(thr_elem_a, struct donation_elem,elem)->donation_priority;
-    int priority_b = list_entry(thr_elem_b, struct donation_elem, elem)->donation_priority;
-    return priority_a < priority_b ? true : false;
 }
 
 /* Returns the current thread's priority. */
@@ -531,7 +521,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-    list_init(&(t->donations));
   t->block_lock = NULL;
   t->max_priority = priority;
 

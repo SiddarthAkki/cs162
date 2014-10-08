@@ -253,25 +253,38 @@ lock_acquire (struct lock *lock)
 
       curr_thread = curr_lock->holder;
 
-      elem_end = list_back(&(curr_thread->donations));
-
-      curr_elem = list_begin(&(curr_thread->donations));
       entry_found = false;
 
-      while (curr_elem != elem_end) {
-        d_elem = list_entry(curr_elem, struct donation_elem, elem);
-        if (d_elem->donating_lock == curr_lock) {
-          entry_found = true;
-          if (d_elem->donation_priority < donate_priority) {
-            d_elem->donation_priority = donate_priority;
-            break;
+      int i = 0
+
+      for (i = 0; i < 8; i++) {
+        if (thread_current()->donations[i] != NULL) {
+          if (curr_thread->donations[i].donating_lock == curr_lock) {
+            entry_found = true;
+            if (curr_thread->donations[i].donation_priority < donate_priority) {
+              curr_thread->donations[i].donation_priority = donate_priority;
+            }
           }
-        } else {
-          curr_elem = list_next(curr_elem);
         }
       }
 
+      int curr_min_or_null = -1;
+
+      int curr_min = 70;
+      
       if (!entry_found) {
+        for (i = 0; i < 8; i++) {
+          if (curr_thread->donations[i] == NULL) {
+            curr_min_or_null = i;
+            break;
+          } else {
+            if (curr_min > curr_thread->donations[i].donation_priority) {
+              curr_min = curr_thread->donations[i].donation_priority;
+              curr_min_or_null = i;
+            }
+          }
+        }
+      }
         d_elem = malloc(sizeof(struct donation_elem));
         d_elem->donating_lock = curr_lock;
         d_elem->donation_priority = donate_priority;
