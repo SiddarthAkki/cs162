@@ -70,12 +70,6 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-static bool max_priority_compare(const struct list_elem *thr_elem_a,
-                             const struct list_elem *thr_elem_b,
-                             void *aux UNUSED);
-static bool donation_priority_compare(const struct list_elem *thr_elem_a,
-                              const struct list_elem *thr_elem_b,
-                              void *aux UNUSED);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -371,7 +365,7 @@ thread_set_priority (int new_priority)
 }
 
 /* Compares the priorities of threads a and b and returns true if the priority of a is less than that of b, false otherwise. */
-static bool donation_priority_compare(const struct list_elem *thr_elem_a,
+bool donation_priority_compare(const struct list_elem *thr_elem_a,
                               const struct list_elem *thr_elem_b,
                               void *aux UNUSED) {
     int priority_a = list_entry(thr_elem_a, struct lock,elem)->donation_priority;
@@ -550,7 +544,7 @@ next_thread_to_run (void)
 }
 
 /* Compares the priorities of threads a and b and returns true if the priority of a is less than that of b, false otherwise. */
-static bool max_priority_compare(const struct list_elem *thr_elem_a,
+bool max_priority_compare(const struct list_elem *thr_elem_a,
                               const struct list_elem *thr_elem_b,
                               void *aux UNUSED) {
     ASSERT(is_thread(list_entry(thr_elem_a, struct thread,elem)));

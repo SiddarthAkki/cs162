@@ -104,7 +104,7 @@ sema_try_down (struct semaphore *sema)
 /* Used to find the largest priority thread, waiting on a sema,
 to wake up
 */
-
+/*
 static bool max_priority_compare(const struct list_elem *thread_a,
                               const struct list_elem *thread_b,
                               void *aux UNUSED) {
@@ -113,15 +113,8 @@ static bool max_priority_compare(const struct list_elem *thread_a,
     //printf("1: %d, 2: %d\n", size_a, size_b);
     return size_a <= size_b ? true : false;
 }
-
-static bool donation_priority_compare(const struct list_elem *thr_elem_a,
-                              const struct list_elem *thr_elem_b,
-                              void *aux UNUSED) {
-    int priority_a = list_entry(thr_elem_a, struct lock,elem)->donation_priority;
-    int priority_b = list_entry(thr_elem_b, struct lock, elem)->donation_priority;
-    return priority_a < priority_b ? true : false;
-}
-
+*/
+ 
 /* Up or "V" operation on a semaphore.  Increments SEMA's value
    and wakes up one thread of those waiting for SEMA, if any.
 
