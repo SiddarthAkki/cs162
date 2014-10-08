@@ -292,6 +292,15 @@ lock_acquire (struct lock *lock)
       max_recurse--;
 
     }
+  } else {
+    /*
+    printf("\nelse\n");
+    //d_elem = malloc(sizeof(struct donation_elem));
+    d_elem->donating_lock = lock;
+    d_elem->donation_priority = PRI_MIN;
+    printf("\n new magic: %d\n", this_thread->magic);
+    list_push_front (&(thread_current()->donations), &d_elem->elem);
+    */
   }
 
   sema_down (&lock->semaphore);

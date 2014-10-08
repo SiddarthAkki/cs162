@@ -204,15 +204,12 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  /* Instantiate donations list */
-  list_init(&(t->donations));
-  t->block_lock = NULL;
-  t->max_priority = priority;
-
   /* Add to run queue. */
   thread_unblock (t);
 
-  if (!intr_context() && thread_current()->priority < priority) {
+  //&& thread_current()->max_priority < t->max_priority
+
+  if (!intr_context()) {
     thread_yield();
   }
 
@@ -365,6 +362,7 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
 
   //comment out if block 2 more tests pass
+  
 
   if (!list_empty(&thread_current()->donations)) {
     struct list_elem *max_donate = list_max(&(thread_current()->donations), &donation_priority_compare, NULL);
@@ -374,19 +372,27 @@ thread_set_priority (int new_priority)
     } else {
       thread_current()->max_priority = new_priority;
     }
+  } else {
+    thread_current()->max_priority = new_priority;
   }
-    
-  //added
-  int list_max_priority;
 
-  struct thread * max_thread;
-  struct list_elem *max = list_max(&ready_list, &max_priority_compare, NULL);
-  max_thread = list_entry(max, struct thread, elem);
-  list_max_priority = max_thread->priority;
+  /*
+  //Debug, you have to make sure that the ready list is not empty
+  if(!list_empty(&ready_list)){
+    int list_max_priority;
 
-  if (thread_current()->max_priority < list_max_priority) {
-    thread_yield();
+    struct thread * max_thread;
+    struct list_elem *max = list_max(&ready_list, &max_priority_compare, NULL);
+    max_thread = list_entry(max, struct thread, elem);
+    list_max_priority = max_thread->priority;
+
+    if (thread_current()->max_priority < list_max_priority) {
+      thread_yield();
+    }
   }
+  */
+
+  thread_yield();
 
 }
 
@@ -403,7 +409,7 @@ static bool donation_priority_compare(const struct list_elem *thr_elem_a,
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return thread_current ()->max_priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -525,6 +531,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
+    list_init(&(t->donations));
+  t->block_lock = NULL;
+  t->max_priority = priority;
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -577,15 +587,14 @@ next_thread_to_run (void)
     list_remove(&max_thread->elem);
     return max_thread;
 */
+
+    struct list_elem *thread_elem = list_max(&ready_list, &max_priority_compare, NULL);
+    list_remove (thread_elem);
       
       
-      struct list_elem * thread_elem = list_max(&ready_list, max_priority_compare, NULL);
-      list_remove (thread_elem);
-      
-      
-    struct thread * new_thread = list_entry (thread_elem, struct thread, elem);
-      ASSERT(is_thread(new_thread));
-      return new_thread;
+    struct thread *new_thread = list_entry (thread_elem, struct thread, elem);
+    ASSERT(is_thread(new_thread));
+    return new_thread;
        
       
       //return list_entry (list_pop_front (&ready_list), struct thread, elem);
