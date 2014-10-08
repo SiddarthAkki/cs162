@@ -350,25 +350,14 @@ void
 thread_set_priority (int new_priority) 
 {
 
-  // if (thread_current()->priority == thread_current()->max_priority) {
-  //   if (new_priority < thread_current()->priority) {
-  //     struct list_elem *max_donate = list_max(thread->donations, &donation_priority_compare, NULL);
-  //     struct donation_elem *max_donate_elem = list_entry(max_donate, struct donation_elem, elem);
-  //     if (new_priority < max_donate_elem->donation_priority) {
-  //       thread_current()->priority = max_donate_elem->donation_priority;
-  //     }
-  //   }
-  // }
   thread_current ()->priority = new_priority;
 
-  //comment out if block 2 more tests pass
-  
-
+  //Find this threads max_donate based on all the locks it holds and the new_priority
   if (!list_empty(&thread_current()->donations)) {
     struct list_elem *max_donate = list_max(&(thread_current()->donations), &donation_priority_compare, NULL);
-    struct donation_elem *max_donate_elem = list_entry(max_donate, struct donation_elem, elem);
-    if (new_priority < max_donate_elem->donation_priority) {
-      thread_current()->max_priority = max_donate_elem->donation_priority;
+    struct lock *max_donate_lock = list_entry(max_donate, struct lock, elem);
+    if (new_priority < max_donate_lock->donation_priority) {
+      thread_current()->max_priority = max_donate_lock->donation_priority;
     } else {
       thread_current()->max_priority = new_priority;
     }
@@ -376,22 +365,7 @@ thread_set_priority (int new_priority)
     thread_current()->max_priority = new_priority;
   }
 
-  /*
-  //Debug, you have to make sure that the ready list is not empty
-  if(!list_empty(&ready_list)){
-    int list_max_priority;
-
-    struct thread * max_thread;
-    struct list_elem *max = list_max(&ready_list, &max_priority_compare, NULL);
-    max_thread = list_entry(max, struct thread, elem);
-    list_max_priority = max_thread->priority;
-
-    if (thread_current()->max_priority < list_max_priority) {
-      thread_yield();
-    }
-  }
-  */
-
+  //Yield unconditionally because you are a jerk.
   thread_yield();
 
 }
@@ -400,8 +374,8 @@ thread_set_priority (int new_priority)
 static bool donation_priority_compare(const struct list_elem *thr_elem_a,
                               const struct list_elem *thr_elem_b,
                               void *aux UNUSED) {
-    int priority_a = list_entry(thr_elem_a, struct donation_elem,elem)->donation_priority;
-    int priority_b = list_entry(thr_elem_b, struct donation_elem, elem)->donation_priority;
+    int priority_a = list_entry(thr_elem_a, struct lock,elem)->donation_priority;
+    int priority_b = list_entry(thr_elem_b, struct lock, elem)->donation_priority;
     return priority_a < priority_b ? true : false;
 }
 
@@ -531,7 +505,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-    list_init(&(t->donations));
+  list_init(&(t->donations));
   t->block_lock = NULL;
   t->max_priority = priority;
 
@@ -564,40 +538,14 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else {
-    //added
-      
-    /*
-    struct thread *max_thread;
-    int max_priority = PRI_MIN - 1;
-
-    struct thread * curr_thread;
-    struct list_elem *curr = list_begin(&ready_list);
-
-    struct list_elem *tail = list_tail(&ready_list);
-
-    while (curr != tail) {
-      curr_thread = list_entry (curr, struct thread, elem);
-      if (curr_thread->priority > max_priority) {
-        max_thread = curr_thread;
-        max_priority = curr_thread->priority;
-      }
-      curr = list_next(curr);
-    }
-
-    list_remove(&max_thread->elem);
-    return max_thread;
-*/
 
     struct list_elem *thread_elem = list_max(&ready_list, &max_priority_compare, NULL);
     list_remove (thread_elem);
-      
-      
+
     struct thread *new_thread = list_entry (thread_elem, struct thread, elem);
     ASSERT(is_thread(new_thread));
     return new_thread;
-       
-      
-      //return list_entry (list_pop_front (&ready_list), struct thread, elem);
+
   }
 }
 
