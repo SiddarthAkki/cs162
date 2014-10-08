@@ -282,7 +282,7 @@ lock_acquire (struct lock *lock)
   thread_current()->block_lock = NULL;
 
   //Add this lock to the list of locks you recieve donations from.
-  list_push_front(&(thread_current()->donations), &(lock->elem));
+  list_push_front(&(thread_current()->locks_held_with_donations), &(lock->elem));
 
   intr_set_level (old_level);
   lock->holder = thread_current ();
@@ -330,8 +330,8 @@ lock_release (struct lock *lock)
   struct thread *t = thread_current();
   int base_priority = t->priority;
 
-  if (!list_empty(&t->donations)) {
-    struct list_elem *max_donate = list_max(&(t->donations), &donation_priority_compare, NULL);
+  if (!list_empty(&t->locks_held_with_donations)) {
+    struct list_elem *max_donate = list_max(&(t->locks_held_with_donations), &donation_priority_compare, NULL);
     struct lock *max_donate_lock = list_entry(max_donate, struct lock, elem);
     if (base_priority < max_donate_lock->donation_priority) {
       t->max_priority = max_donate_lock->donation_priority;

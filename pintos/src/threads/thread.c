@@ -347,8 +347,8 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
 
   //Find this threads max_donate based on all the locks it holds and the new_priority
-  if (!list_empty(&thread_current()->donations)) {
-    struct list_elem *max_donate = list_max(&(thread_current()->donations), &donation_priority_compare, NULL);
+  if (!list_empty(&thread_current()->locks_held_with_donations)) {
+    struct list_elem *max_donate = list_max(&(thread_current()->locks_held_with_donations), &donation_priority_compare, NULL);
     struct lock *max_donate_lock = list_entry(max_donate, struct lock, elem);
     if (new_priority < max_donate_lock->donation_priority) {
       thread_current()->max_priority = max_donate_lock->donation_priority;
@@ -499,7 +499,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  list_init(&(t->donations));
+  list_init(&(t->locks_held_with_donations));
   t->block_lock = NULL;
   t->max_priority = priority;
 
