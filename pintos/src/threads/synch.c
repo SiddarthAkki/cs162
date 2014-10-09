@@ -104,16 +104,17 @@ sema_try_down (struct semaphore *sema)
 /* Used to find the largest priority thread, waiting on a sema,
 to wake up
 */
-
-static bool priority_compare(const struct list_elem *thread_a,
+/*
+static bool max_priority_compare(const struct list_elem *thread_a,
                               const struct list_elem *thread_b,
                               void *aux UNUSED) {
-    int size_a = list_entry(thread_a, struct thread, elem)->priority;
-    int size_b = list_entry(thread_b, struct thread, elem)->priority;
+    int size_a = list_entry(thread_a, struct thread, elem)->max_priority;
+    int size_b = list_entry(thread_b, struct thread, elem)->max_priority;
     //printf("1: %d, 2: %d\n", size_a, size_b);
     return size_a <= size_b ? true : false;
 }
-
+*/
+ 
 /* Up or "V" operation on a semaphore.  Increments SEMA's value
    and wakes up one thread of those waiting for SEMA, if any.
 
@@ -134,7 +135,7 @@ sema_up (struct semaphore *sema)
   if (!list_empty (&sema->waiters)) {
 
     struct thread *max_thread;
-    struct list_elem *max = list_max(&sema->waiters, &priority_compare, NULL);
+    struct list_elem *max = list_max(&sema->waiters, &max_priority_compare, NULL);
     max_thread = list_entry(max, struct thread, elem);
     max_priority = max_thread->priority;
     list_remove(&max_thread->elem);
@@ -216,6 +217,9 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+
+  //Only allow this lock to donate the minimum priority possible.
+  lock->donation_priority = PRI_MIN;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -233,9 +237,58 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable ();
+
+  thread_current()->block_lock = lock;
+  int donate_priority = thread_current()->max_priority;
+
+  int max_recurse = 8;
+
+  struct lock *curr_lock = lock;
+  struct thread *curr_thread;
+
+  //Recursivley update all locks donation_priorities and threads max_priorities
+  //until you hit the limit or find a thread that is not blocked
+  if (curr_lock->holder != NULL) {
+    while (max_recurse > 0) {
+      curr_thread = curr_lock->holder;
+      if (curr_lock->donation_priority < donate_priority){
+        curr_lock->donation_priority = donate_priority;
+        if (curr_thread->max_priority < donate_priority){
+          curr_thread->max_priority = donate_priority;
+        }
+      }
+      if (curr_thread->block_lock != NULL) {
+        curr_lock = curr_thread->block_lock;
+      } else {
+        break;
+      }
+      max_recurse--;
+    }
+  }
+
   sema_down (&lock->semaphore);
+
+  //The donating thread has aquired the lock so it should rescind its donation.
+  struct list *lock_waiters = &(lock->semaphore.waiters);
+  if (!list_empty(lock_waiters)) {
+    struct list_elem *max_waiter_elem = list_max(lock_waiters, &max_priority_compare, NULL);
+    lock->donation_priority = (list_entry(max_waiter_elem, struct thread, elem))->max_priority;
+  } else {
+    lock->donation_priority = PRI_MIN;
+  }
+
+  //Stop reporting that you are blocked by this lock.
+  thread_current()->block_lock = NULL;
+
+  //Add this lock to the list of locks you recieve donations from.
+  list_push_front(&(thread_current()->locks_held_with_donations), &(lock->elem));
+
+  intr_set_level (old_level);
   lock->holder = thread_current ();
 }
+
+
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
@@ -268,9 +321,35 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  enum intr_level old_level = intr_disable ();
+
+  //Remove this lock from the list of locks donating to you.
+  list_remove(&(lock->elem));
+
+  //Find new max priority after relinquishing the donation associated with the lock.
+  struct thread *t = thread_current();
+  int base_priority = t->priority;
+
+  if (!list_empty(&t->locks_held_with_donations)) {
+    struct list_elem *max_donate = list_max(&(t->locks_held_with_donations), &donation_priority_compare, NULL);
+    struct lock *max_donate_lock = list_entry(max_donate, struct lock, elem);
+    if (base_priority < max_donate_lock->donation_priority) {
+      t->max_priority = max_donate_lock->donation_priority;
+    } else {
+      t->max_priority = base_priority;
+    }
+  } else {
+    t->max_priority = base_priority;
+  }
+
+  intr_set_level (old_level);
+
   lock->holder = NULL;
+
   sema_up (&lock->semaphore);
+
 }
+
 
 /* Returns true if the current thread holds LOCK, false
    otherwise.  (Note that testing whether some other thread holds
@@ -355,8 +434,8 @@ static bool cond_priority_compare(const struct list_elem *thread_a,
     first_thread_list_elem = list_begin(&(&first_sema_elem->semaphore)->waiters);
     second_thread_list_elem = list_begin(&(&second_sema_elem->semaphore)->waiters);
 
-    int size_a = list_entry(first_thread_list_elem, struct thread, elem)->priority;
-    int size_b = list_entry(second_thread_list_elem, struct thread, elem)->priority;
+    int size_a = list_entry(first_thread_list_elem, struct thread, elem)->max_priority;
+    int size_b = list_entry(second_thread_list_elem, struct thread, elem)->max_priority;
     return size_a <= size_b ? true : false;
 }
 
