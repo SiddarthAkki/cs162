@@ -91,7 +91,7 @@ struct thread
 
     int max_priority;                   /* Max Priority for the set of intrinsic and donated priorities*/
     struct list locks_held_with_donations;              /* Holds donated priorities associated with held locks. */
-    struct lock *block_lock;            /* The blocking lock you are waiting for replaces donated_to*/
+    struct lock *block_lock;            /* The blocking lock the thread is waiting for*/
 
     struct list_elem allelem;           /* List element for all threads list. */
 
@@ -150,7 +150,7 @@ int thread_get_load_avg (void);
 bool donation_priority_compare(const struct list_elem *thr_elem_a,
                                const struct list_elem *thr_elem_b,
                                void *aux UNUSED);
-bool max_priority_compare(const struct list_elem *thr_elem_a,
+bool thread_priority_compare(const struct list_elem *thr_elem_a,
                           const struct list_elem *thr_elem_b,
                           void *aux UNUSED);
 #endif /* threads/thread.h */

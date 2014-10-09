@@ -201,8 +201,6 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  //&& thread_current()->max_priority < t->max_priority
-
   if (!intr_context()) {
     thread_yield();
   }
@@ -346,7 +344,9 @@ thread_set_priority (int new_priority)
 
   thread_current ()->priority = new_priority;
 
-  //Find this threads max_donate based on all the locks it holds and the new_priority
+  /*Find this threads max_donate which is the max of the priorities of all the locks the thread holds
+  and the new_priority*/
+
   if (!list_empty(&thread_current()->locks_held_with_donations)) {
     struct list_elem *max_donate = list_max(&(thread_current()->locks_held_with_donations), &donation_priority_compare, NULL);
     struct lock *max_donate_lock = list_entry(max_donate, struct lock, elem);
@@ -359,7 +359,6 @@ thread_set_priority (int new_priority)
     thread_current()->max_priority = new_priority;
   }
 
-  //Yield unconditionally because you are a jerk.
   thread_yield();
 
 }
@@ -533,7 +532,7 @@ next_thread_to_run (void)
     return idle_thread;
   else {
 
-    struct list_elem *thread_elem = list_max(&ready_list, &max_priority_compare, NULL);
+    struct list_elem *thread_elem = list_max(&ready_list, &thread_priority_compare, NULL);
     list_remove (thread_elem);
 
     struct thread *new_thread = list_entry (thread_elem, struct thread, elem);
@@ -544,7 +543,7 @@ next_thread_to_run (void)
 }
 
 /* Compares the priorities of threads a and b and returns true if the priority of a is less than that of b, false otherwise. */
-bool max_priority_compare(const struct list_elem *thr_elem_a,
+bool thread_priority_compare(const struct list_elem *thr_elem_a,
                               const struct list_elem *thr_elem_b,
                               void *aux UNUSED) {
     ASSERT(is_thread(list_entry(thr_elem_a, struct thread,elem)));

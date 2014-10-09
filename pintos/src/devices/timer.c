@@ -34,17 +34,6 @@ static bool wait_time_compare (const struct list_elem *thread_a,
 			       const struct list_elem *thread_b,
 			       void *aux);
 
-//static struct lock tick_lock;  //Comment
-//static struct condition tick_conditional;
-
-/*
-struct wait_elem {
-  struct list_elem elem;
-  struct thread *waiting_thread;
-  int64_t waiting_time;
-};
-*/
-
 static struct list wait_list;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
@@ -54,9 +43,6 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-
-  //lock_init(&tick_lock);  //Comment
-  //cond_init(&tick_conditional);
   list_init(&wait_list);
 
 }
@@ -115,20 +101,14 @@ timer_sleep (int64_t ticks)
 
   enum intr_level old_level;
   old_level = intr_disable ();
-  //struct wait_elem *this_waiter = malloc(sizeof(struct wait_elem));
   
   struct thread * t = thread_current();
-    /*
-  this_waiter->waiting_thread = t;
-  this_waiter->waiting_time = end;
-     */
-    t->waiting_time = end_wait;
+
+  t->waiting_time = end_wait;
   
-  //list_insert_ordered(&wait_list, &this_waiter->elem, &wait_time_compare, NULL);
-    list_insert_ordered(&wait_list, &t->elem, &wait_time_compare, NULL);
+  list_insert_ordered(&wait_list, &t->elem, &wait_time_compare, NULL);
   thread_block();
   intr_set_level (old_level);
-  //free(this_waiter);
   
 }
 
@@ -225,17 +205,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
     
   while(thr_elem != list_end(&wait_list))
   {
-    //temp = list_entry(e, struct wait_elem, elem);
     curr_thr = list_entry(thr_elem, struct thread, elem);
     if (curr_thr->waiting_time <= ticks) {
-      //temp_e = list_next(e);
+
       thr_elem = list_remove(thr_elem);
-      //thread_unblock(temp->waiting_thread);
         thread_unblock(curr_thr);
-      //e = temp_e;
+
     }
-    else{
-      //e = list_next(e);
+    else {
       break;
     }
   }
