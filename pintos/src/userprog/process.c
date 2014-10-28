@@ -97,6 +97,11 @@ start_process (void *temp_args)
     sema_up(&(curr_thread->parent_wait->success));
     thread_exit ();
   }
+    else
+    {
+        curr_thread->parent_wait->initial_success = 1;
+        sema_up(&(curr_thread->parent_wait->success));
+    }
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -120,7 +125,36 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   //sema_down(&temporary);
-  return 0;
+    
+    //iterate through list of child processes
+    struct thread *curr_thread = thread_current();
+    struct list children = curr_thread->children_wait;
+    struct list_elem *child_elem;
+    struct wait_status *child_status = NULL;
+    for (child_elem = list_begin (&children); child_elem != list_end (&children);
+         child_elem = list_next (child_elem))
+    {
+        child_status = list_entry (child_elem, struct wait_status, elem);
+        if (child_tid == child_status->tid)
+        {
+            break;
+        }
+    }
+    //(If none is found, return -1.)
+    if (child_status == NULL)
+    {
+        return -1;
+    }
+    // Wait for the child to die, by downing a semaphore in the shared data.
+    sema_down(&child_status->dead);
+    
+    //Obtain the child’s exit code from the shared data.
+    int exit_code = child_status->exit_code;
+    
+    //Destroy the shared data structure and remove it from the list.
+    list_remove(&child_status->elem);
+    free(child_status);
+    return exit_code;
 }
 
 void free_wait_status(wait_status *status) {
