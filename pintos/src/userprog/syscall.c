@@ -21,13 +21,17 @@ syscall_handler (struct intr_frame *f UNUSED)
   switch(args[0]) 
   {
   	case SYS_EXIT:
-  		f->eax = args[1];
+      wait_status *cur = thread_current()->parent_wait;
+      if (cur != NULL) {
+        cur->exit_code = args[1];
+      }
      	thread_exit();
   		break;
   	case SYS_NULL:
   		f->eax = args[1]+1;
   		break;
   	case SYS_WRITE:
+	        
   		printf("%s\n", ((char*) args[2]));
   		f->eax = args[3];
   		break;

@@ -19,9 +19,14 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-static struct semaphore temporary;
+//static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+
+struct argpass {
+  wait_status *status;
+  char *fncopy;
+}
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -33,27 +38,47 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
-  sema_init(&temporary, 0);
+  //sema_init(&temporary, 0);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
+  
+  wait_status *wait_stat = (wait_status *) malloc(sizeof(wait_status));
+  lock_init(&(wait_stat->lock);
+  sema_init(&(wait_stat->dead), 0);
+  sema_init(&(wait_stat->success), 0);
+  wait_stat->ref_cnt = 2;
+  
+  struct argpass *args;
+  args->fn_copy = fn_copy;
+  args->status = wait_stat;
+  struct thread *curr_thread = thread_current();
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, args);
+  if (tid == TID_ERROR) {
+    palloc_free_page (fn_copy);
+    free(wait_stat);
+  } else {
+    list_push_front(curr_thread->children_wait, wait_stat->elem);
+  }
+
+  
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *temp_args)
 {
-  char *file_name = file_name_;
+  argpass *args = temp_args;
+  wait_status *status = args->status;
+  char *file_name = temp_args->fncopy;
+  struct thread *curr_thread = thread_current();
+  curr_thread->parent_wait = status;
   struct intr_frame if_;
   bool success;
 
@@ -64,11 +89,14 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
+
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
+  if (!success) {
+    curr_thread->parent_wait->inital_success = -1;
+    sema_up(&(curr_thread->parent_wait->success));
     thread_exit ();
-
+  }
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -91,10 +119,17 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  sema_down(&temporary);
+  //sema_down(&temporary);
   return 0;
 }
 
+void free_wait_status(wait_status *status) {
+  lock_acquire(&status->lock);
+  status->ref_cnt--;
+  if (ref_cnt == 0) {
+    
+  }
+}
 /* Free the current process's resources. */
 void
 process_exit (void)
@@ -118,7 +153,11 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-    sema_up(&temporary);
+    if (cur->parent_wait != NULL) {
+        sema_up(&(cur->parent_wait->dead));
+        free_wait_status(&(cur->parent_wait));
+    }
+    //sema_up(&temporary);
 }
 
 /* Sets up the CPU for running user code in the current
