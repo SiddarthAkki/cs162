@@ -25,8 +25,8 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 struct argpass {
   wait_status *status;
-  char *fncopy;
-}
+  char *fn_copy;
+};
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -47,7 +47,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
   
   wait_status *wait_stat = (wait_status *) malloc(sizeof(wait_status));
-  lock_init(&(wait_stat->lock);
+  lock_init(&(wait_stat->lock));
   sema_init(&(wait_stat->dead), 0);
   sema_init(&(wait_stat->success), 0);
   wait_stat->ref_cnt = 2;
@@ -62,7 +62,7 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy);
     free(wait_stat);
   } else {
-    list_push_front(curr_thread->children_wait, wait_stat->elem);
+    list_push_front(&curr_thread->children_wait, &wait_stat->elem);
   }
 
   
@@ -74,9 +74,9 @@ process_execute (const char *file_name)
 static void
 start_process (void *temp_args)
 {
-  argpass *args = temp_args;
+  struct argpass *args = temp_args;
   wait_status *status = args->status;
-  char *file_name = temp_args->fncopy;
+  char *file_name = args->fn_copy;
   struct thread *curr_thread = thread_current();
   curr_thread->parent_wait = status;
   struct intr_frame if_;
@@ -93,7 +93,7 @@ start_process (void *temp_args)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    curr_thread->parent_wait->inital_success = -1;
+    curr_thread->parent_wait->initial_success = -1;
     sema_up(&(curr_thread->parent_wait->success));
     thread_exit ();
   }
@@ -126,7 +126,7 @@ process_wait (tid_t child_tid UNUSED)
 void free_wait_status(wait_status *status) {
   lock_acquire(&status->lock);
   status->ref_cnt--;
-  if (ref_cnt == 0) {
+  if (status->ref_cnt == 0) {
     
   }
 }

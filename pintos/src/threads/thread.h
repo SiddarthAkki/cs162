@@ -98,7 +98,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
     
-    wait_status *parent_wait;       /* The wait element shared between this child thread and it's
+    struct wait_status *parent_wait;       /* The wait element shared between this child thread and it's
 				       parent */
 
     struct list children_wait;      /* List of wait elements associated with child processes */
