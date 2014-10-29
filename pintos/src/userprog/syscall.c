@@ -6,6 +6,8 @@
 #include "userprog/process.h"
 #include "threads/init.h"
 #include <stdbool.h>
+#include "userprog/pagedir.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -15,12 +17,12 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static int vaild_pointer (void *vaddr) {
+static int valid_pointer (void *vaddr) {
   struct thread *cur = thread_current ();
   uint32_t *pd;
   pd = cur->pagedir;
 
-  return is_user_vaddr(vaddr) && (NULL != lookup_page(pd, vaddr, false));
+  return is_user_vaddr(vaddr) && (NULL != pagedir_get_page(pd, vaddr));
 }
 
 static void
@@ -45,7 +47,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_EXEC:
-        if (vaild_pointer(args[1])){
+        if (valid_pointer(args[1])){
           f->eax = process_execute(args[1]);
         } else {
           thread_exit();
@@ -61,7 +63,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_WRITE:
-        if (vaild_pointer(args[2])){
+        if (valid_pointer(args[2])){
           printf("%s\n", ((char*) args[2]));
           f->eax = args[3];
         } else {

@@ -53,18 +53,18 @@ process_execute (const char *file_name)
   wait_stat->ref_cnt = 2;
   wait_stat->exit_code = -1;
   
-  struct argpass *args;
-  args->fn_copy = fn_copy;
-  args->status = wait_stat;
+  struct argpass args;
+  args.fn_copy = fn_copy;
+  args.status = wait_stat;
   struct thread *curr_thread = thread_current();
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, args);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, &args);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
     free(wait_stat);
     return -1;
   } else {
-    sema_down(wait_stat->success);
+    sema_down(&wait_stat->success);
     if (wait_stat->initial_success != -1) {
       list_push_front(&curr_thread->children_wait, &wait_stat->elem);
       return tid;
@@ -132,11 +132,12 @@ process_wait (tid_t child_tid)
     
     //iterate through list of child processes
     struct thread *curr_thread = thread_current();
-    struct list children = curr_thread->children_wait;
+    struct list *children = &curr_thread->children_wait;
     struct list_elem *child_elem;
     wait_status *temp_status = NULL;
     wait_status *child_status = NULL;
-    for (child_elem = list_begin (&children); child_elem != list_end (&children);
+    struct list_elem *end = list_end(children);
+    for (child_elem = list_begin (children); child_elem != end;
          child_elem = list_next (child_elem))
     {
         temp_status = list_entry (child_elem, wait_status, elem);
@@ -201,12 +202,12 @@ process_exit (void)
       free_wait_status(&(cur->parent_wait));
   }
 
-  struct list children = cur->children_wait;
+  struct list *children = &cur->children_wait;
   struct list_elem *child_elem;
   wait_status *temp_status;
 
-  while (!list_empty(&children)) {
-    child_elem = list_pop_front(&children);
+  while (!list_empty(children)) {
+    child_elem = list_pop_front(children);
     temp_status = list_entry (child_elem, wait_status, elem);
     free_wait_status(child_elem);
   }
