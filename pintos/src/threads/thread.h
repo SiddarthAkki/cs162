@@ -24,6 +24,18 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Wait status struct to be referenced between a process and its child */
+typedef struct wait_status {
+  struct list_elem elem;
+  struct lock lock;
+  int ref_cnt;
+  tid_t tid;
+  int exit_code;
+  struct semaphore dead;
+  int initial_success;
+  struct semaphore success;
+} wait_status;
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -98,7 +110,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #endif
     
-    struct wait_status *parent_wait;       /* The wait element shared between this child thread and it's
+    wait_status *parent_wait;       /* The wait element shared between this child thread and it's
 				       parent */
 
     struct list children_wait;      /* List of wait elements associated with child processes */
