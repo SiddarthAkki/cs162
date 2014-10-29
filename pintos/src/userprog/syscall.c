@@ -4,6 +4,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/process.h"
+#include "threads/init.h"
+#include <stdbool.h>
 
 static void syscall_handler (struct intr_frame *);
 
@@ -11,6 +13,14 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+}
+
+static int vaild_pointer (void *vaddr) {
+  struct thread *cur = thread_current ();
+  uint32_t *pd;
+  pd = cur->pagedir;
+
+  return is_user_vaddr(vaddr) && (NULL != lookup_page(pd, vaddr, false));
 }
 
 static void
@@ -22,24 +32,45 @@ syscall_handler (struct intr_frame *f UNUSED)
     struct wait_status *cur_status;
   switch(args[0]) 
   {
-      case SYS_EXIT:
-          cur_status = thread_current()->parent_wait;
-          if (cur_status != NULL) {
-            cur_status->exit_code = args[1];
-          }
+    case SYS_HALT:
+        shutdown_power_off();
+        break;
+
+    case SYS_EXIT:
+        cur_status = thread_current()->parent_wait;
+        if (cur_status != NULL) {
+          cur_status->exit_code = args[1];
+        }
+        thread_exit();
+        break;
+
+    case SYS_EXEC:
+        if (vaild_pointer(args[1])){
+          f->eax = process_execute(args[1]);
+        } else {
           thread_exit();
-          break;
-      case SYS_NULL:
-          f->eax = args[1]+1;
-          break;
-      case SYS_WRITE:
-	        
+        }
+        break;
+
+    case SYS_WAIT:
+        f->eax = process_wait(args[1]);
+        break;
+
+    case SYS_NULL:
+        f->eax = args[1]+1;
+        break;
+
+    case SYS_WRITE:
+        if (vaild_pointer(args[2])){
           printf("%s\n", ((char*) args[2]));
           f->eax = args[3];
-          break;
+        } else {
+          thread_exit();
+        }
+        break;
 
-      default:
-          break;
+    default:
+        break;
   }
 }
 

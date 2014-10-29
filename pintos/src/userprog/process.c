@@ -51,6 +51,7 @@ process_execute (const char *file_name)
   sema_init(&(wait_stat->dead), 0);
   sema_init(&(wait_stat->success), 0);
   wait_stat->ref_cnt = 2;
+  wait_stat->exit_code = -1;
   
   struct argpass *args;
   args->fn_copy = fn_copy;
@@ -61,12 +62,17 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
     free(wait_stat);
+    return -1;
   } else {
-    list_push_front(&curr_thread->children_wait, &wait_stat->elem);
+    sema_down(wait_stat->success);
+    if (wait_stat->initial_success != -1) {
+      list_push_front(&curr_thread->children_wait, &wait_stat->elem);
+      return tid;
+    } else {
+      free(wait_stat);
+      return -1;
+    }
   }
-
-  
-  return tid;
 }
 
 /* A thread function that loads a user process and starts it
@@ -96,12 +102,10 @@ start_process (void *temp_args)
     curr_thread->parent_wait->initial_success = -1;
     sema_up(&(curr_thread->parent_wait->success));
     thread_exit ();
+  } else  {
+    curr_thread->parent_wait->initial_success = 1;
+    sema_up(&(curr_thread->parent_wait->success));
   }
-    else
-    {
-        curr_thread->parent_wait->initial_success = 1;
-        sema_up(&(curr_thread->parent_wait->success));
-    }
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -122,7 +126,7 @@ start_process (void *temp_args)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
   //sema_down(&temporary);
     
@@ -130,13 +134,15 @@ process_wait (tid_t child_tid UNUSED)
     struct thread *curr_thread = thread_current();
     struct list children = curr_thread->children_wait;
     struct list_elem *child_elem;
-    struct wait_status *child_status = NULL;
+    wait_status *temp_status = NULL;
+    wait_status *child_status = NULL;
     for (child_elem = list_begin (&children); child_elem != list_end (&children);
          child_elem = list_next (child_elem))
     {
-        child_status = list_entry (child_elem, struct wait_status, elem);
-        if (child_tid == child_status->tid)
+        temp_status = list_entry (child_elem, wait_status, elem);
+        if (child_tid == temp_status->tid)
         {
+            child_status = temp_status;
             break;
         }
     }
@@ -161,7 +167,10 @@ void free_wait_status(wait_status *status) {
   lock_acquire(&status->lock);
   status->ref_cnt--;
   if (status->ref_cnt == 0) {
-    
+    lock_release(&status->lock);
+    free(status);
+  } else {
+    lock_release(&status->lock);
   }
 }
 /* Free the current process's resources. */
@@ -174,8 +183,7 @@ process_exit (void)
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
-  if (pd != NULL) 
-    {
+  if (pd != NULL) {
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
@@ -186,11 +194,23 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
-    }
-    if (cur->parent_wait != NULL) {
-        sema_up(&(cur->parent_wait->dead));
-        free_wait_status(&(cur->parent_wait));
-    }
+  }
+
+  if (cur->parent_wait != NULL) {
+      sema_up(&(cur->parent_wait->dead));
+      free_wait_status(&(cur->parent_wait));
+  }
+
+  struct list children = cur->children_wait;
+  struct list_elem *child_elem;
+  wait_status *temp_status;
+
+  while (!list_empty(&children)) {
+    child_elem = list_pop_front(&children);
+    temp_status = list_entry (child_elem, wait_status, elem);
+    free_wait_status(child_elem);
+  }
+
     //sema_up(&temporary);
 }
 
