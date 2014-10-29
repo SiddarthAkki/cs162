@@ -85,6 +85,7 @@ start_process (void *temp_args)
   char *file_name = args->fn_copy;
   struct thread *curr_thread = thread_current();
   curr_thread->parent_wait = status;
+  curr_thread->parent_wait->tid = thread_tid();
   struct intr_frame if_;
   bool success;
 
@@ -213,7 +214,7 @@ process_exit (void)
   while (!list_empty(children)) {
     child_elem = list_pop_front(children);
     temp_status = list_entry (child_elem, wait_status, elem);
-    free_wait_status(child_elem);
+    free_wait_status(temp_status);
   }
 
     //sema_up(&temporary);
