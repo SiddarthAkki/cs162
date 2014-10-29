@@ -9,15 +9,4 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
 
-typedef struct wait_status {
-  struct list_elem elem;
-  struct lock lock;
-  int ref_cnt;
-  tid_t tid;
-  int exit_code;
-  struct semaphore dead;
-  int initial_success;
-  struct semaphore success;
-} wait_status;
-
 #endif /* userprog/process.h */
