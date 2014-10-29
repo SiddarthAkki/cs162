@@ -31,7 +31,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   uint32_t* args = ((uint32_t*) f->esp);
   //printf("System call number: %d\n", args[0]);
   char* str;
-    struct wait_status *cur_status;
+  struct wait_status *cur_status;
+  if (!valid_pointer(args))
+  {
+      thread_exit();
+  }
   switch(args[0]) 
   {
     case SYS_HALT:
