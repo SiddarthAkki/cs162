@@ -196,10 +196,14 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
   }
-
+  int exitcode = -1;
+  if (cur->parent_wait != NULL) {
+    exitcode = cur->parent_wait->exit_code;
+  }
+  printf("%s: exit(%d)\n", cur->name, exitcode);
   if (cur->parent_wait != NULL) {
       sema_up(&(cur->parent_wait->dead));
-      free_wait_status(&(cur->parent_wait));
+      free_wait_status(cur->parent_wait);
   }
 
   struct list *children = &cur->children_wait;

@@ -64,7 +64,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_WRITE:
         if (valid_pointer(args[2])){
-          printf("%s\n", ((char*) args[2]));
+          printf("%s", ((char*) args[2]));
           f->eax = args[3];
         } else {
           thread_exit();
