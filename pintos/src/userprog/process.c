@@ -21,7 +21,7 @@
 
 //static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
-static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool load (char *cmdline, void (**eip) (void), void **esp);
 
 struct argpass {
   wait_status *status;
@@ -37,6 +37,8 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
+  char fn_name[15];
+
 
   //sema_init(&temporary, 0);
   /* Make a copy of FILE_NAME.
@@ -45,6 +47,15 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+
+  int i;
+  for (i = 0; i < 14; i++) {
+    if (fn_copy[i] == ' ' || fn_copy[i] == '\t' || fn_copy[i] == '\n' || fn_copy[i] == '\0') {
+      break;
+    }
+    fn_name[i] = fn_copy[i];
+  }
+  fn_name[i] = '\0';
   
   wait_status *wait_stat = (wait_status *) malloc(sizeof(wait_status));
   lock_init(&(wait_stat->lock));
@@ -58,7 +69,7 @@ process_execute (const char *file_name)
   args.status = wait_stat;
   struct thread *curr_thread = thread_current();
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, &args);
+  tid = thread_create (fn_name, PRI_DEFAULT, start_process, &args);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
     free(wait_stat);
@@ -310,7 +321,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (char *file_name, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -324,6 +335,20 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
+
+  //assign filename
+
+  char *token, *save_ptr;
+  size_t size;
+  size_t arg_len;
+
+  size = 0;
+  arg_len = 0;
+  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+    token = strtok_r (NULL, " ", &save_ptr)) {
+    size += (strlen(token) + 1);
+    arg_len++;
+  }
 
   /* Open executable file. */
   file = filesys_open (file_name);
@@ -405,10 +430,47 @@ load (const char *file_name, void (**eip) (void), void **esp)
         }
     }
 
+  // char *token, *save_ptr;
+  // size_t size;
+  // size_t arg_len;
+
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
 
+  // size = 0;
+  // arg_len = 0;
+  // for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+  //   token = strtok_r (NULL, " ", &save_ptr)) {
+  //   size += (strlen(token) + 1);
+  //   arg_len++;
+  // }
+
+  int* argptr = size % 4 == 0 ? (int *)(PHYS_BASE - size) : (int *)(PHYS_BASE - (size + 4 - (size % 4)));
+  argptr = argptr - (arg_len) - 4;
+
+  *argptr = 0;
+  int* end_argptr = argptr;
+  *++argptr = arg_len;
+  *++argptr = argptr+1;
+  char *str_iterator = file_name;
+  size_t arg_size;
+  char *stack_ptr = (char *) *esp;
+  int k;
+  for(k = arg_len;k > 0;k--) {
+    while(str_iterator[0] == '\0') {
+      str_iterator++;
+    }
+    arg_size = strlen(str_iterator) + 1;
+    stack_ptr -= arg_size;
+    strlcpy(stack_ptr, str_iterator, arg_size);
+    str_iterator += arg_size;
+    *++argptr = stack_ptr;
+  }
+
+  *++argptr = 0;
+
+  *esp = (void *) end_argptr;
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
@@ -541,7 +603,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE-12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
