@@ -458,7 +458,7 @@ load (char *file_name, void (**eip) (void), void **esp)
   char *stack_ptr = (char *) *esp;
   int k;
   for(k = arg_len;k > 0;k--) {
-    while(str_iterator[0] == '\0') {
+    while(str_iterator[0] == '\0' || str_iterator[0] == ' ') {
       str_iterator++;
     }
     arg_size = strlen(str_iterator) + 1;
