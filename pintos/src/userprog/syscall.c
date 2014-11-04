@@ -41,6 +41,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       thread_exit();
   }
   struct thread *curr_thread = thread_current();
+  uint32_t prev_fd = curr_thread->fd_curr;
   switch(args[0]) 
   {
     case SYS_HALT:
@@ -58,6 +59,8 @@ syscall_handler (struct intr_frame *f UNUSED)
     //when process exits call file_allow_write()
     case SYS_EXEC:
         if (valid_pointer(args[1])){
+          // find_fd(curr_thread, args);
+          // file_deny_write(curr_thread->fd_table[prev_fd]);
           f->eax = process_execute(args[1]);
         } else {
           thread_exit();
@@ -126,10 +129,6 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
         break;
 
-    case SYS_NULL:
-        f->eax = args[1]+1;
-        break;
-
     case SYS_WRITE:
         if (valid_pointer(args[2]) && valid_pointer(args[2])) {
           if (args[1] == 1) {
@@ -168,11 +167,16 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_CLOSE:
         if (args[1] < 128 && args[1] > 0) {
+          file_close((curr_thread->fd_table)[args[1]]);
           (curr_thread->fd_table)[args[1]] = NULL;
           if (args[1] < curr_thread->fd_curr) {
             curr_thread->fd_curr = args[1];
           }
         }
+        break;
+
+    case SYS_NULL:
+        f->eax = args[1]+1;
         break;
 
     default:
