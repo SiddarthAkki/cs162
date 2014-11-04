@@ -45,7 +45,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_EXIT:
         cur_status = thread_current()->parent_wait;
-        if (cur_status != NULL) {
+        if (cur_status != NULL && valid_pointer(args + 1)) {
           cur_status->exit_code = args[1];
         }
         thread_exit();
