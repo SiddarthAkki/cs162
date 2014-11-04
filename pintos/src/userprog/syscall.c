@@ -104,6 +104,26 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
         break;
 
+    case SYS_READ:
+        if (valid_pointer(args+2) && valid_pointer(args[2])) {
+          if (args[1] == 0) {
+
+          } else {
+            if (args[1] < 128 && args[1] > 0) {
+              if (((curr_thread->fd_table)[args[1]]) != NULL) {
+                f->eax = file_read(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
+              } else {
+                f->eax = -1;
+              }
+            } else {
+              f->eax = -1;
+            }
+          }
+        } else {
+          thread_exit();
+        }
+        break;
+
     case SYS_NULL:
         f->eax = args[1]+1;
         break;
