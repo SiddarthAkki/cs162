@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+#include "filesys/file.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -115,6 +116,10 @@ struct thread
 				       parent */
 
     struct list children_wait;      /* List of wait elements associated with child processes */
+
+    struct file *fd_table[128];      /* File descriptor table */
+
+    uint32_t curr_fd;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

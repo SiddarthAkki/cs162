@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "userprog/pagedir.h"
 #include "threads/vaddr.h"
+#include "filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -49,7 +50,8 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
         thread_exit();
         break;
-
+    //open file and call file_deny_write()
+    //when process exits call file_allow_write()
     case SYS_EXEC:
         if (valid_pointer(args[1])){
           f->eax = process_execute(args[1]);
@@ -61,6 +63,20 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_WAIT:
         f->eax = process_wait(args[1]);
         break;
+
+    case SYS_CREATE:
+        if (valid_pointer(args[1])) {
+          f->eax = filesys_create(args[1], args[2]);
+        } else {
+          thread_exit();
+        }
+        break;
+
+    // case SYS_REMOVE:
+    //     break;
+
+    // case SYS_OPEN:
+    //     break;
 
     case SYS_NULL:
         f->eax = args[1]+1;
