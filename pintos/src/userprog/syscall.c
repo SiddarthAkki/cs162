@@ -11,6 +11,8 @@
 #include "filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
+void find_next_fd(struct thread *curr);
+int find_fd(struct thread *curr_thread, uint32_t* args);
 
 void
 syscall_init (void) 
@@ -37,6 +39,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   {
       thread_exit();
   }
+  struct thread *curr_thread = thread_current();
   switch(args[0]) 
   {
     case SYS_HALT:
@@ -72,11 +75,34 @@ syscall_handler (struct intr_frame *f UNUSED)
         }
         break;
 
-    // case SYS_REMOVE:
-    //     break;
+    case SYS_REMOVE:
+        if (valid_pointer(args+1) && valid_pointer(args[1])) {
+          bool removed = filesys_remove(args[1]);
+          f->eax = removed;
+        } else {
+          thread_exit();
+        }
+        break;
 
-    // case SYS_OPEN:
-    //     break;
+    case SYS_OPEN:
+        if (valid_pointer(args+1) && valid_pointer(args[1])) {
+          if (curr_thread->fd_curr < 128) {
+            f->eax = find_fd(curr_thread, args);
+          } else {
+            f->eax = -1;
+          }
+        } else {
+          thread_exit();
+        }
+        break;
+
+    case SYS_FILESIZE:
+        if (((curr_thread->fd_table)[args[1]]) != NULL) {
+          f->eax = file_length((curr_thread->fd_table)[args[1]]);
+        } else {
+          thread_exit();
+        }
+        break;
 
     case SYS_NULL:
         f->eax = args[1]+1;
@@ -94,6 +120,34 @@ syscall_handler (struct intr_frame *f UNUSED)
     default:
         break;
   }
+}
+
+int find_fd(struct thread *curr_thread, uint32_t* args) {
+  struct file *curr_file = filesys_open(args[1]);
+  int fd;
+  if (curr_file != NULL) {
+    fd = curr_thread->fd_curr;
+    curr_thread->fd_table[fd] = curr_file;
+    find_next_fd(curr_thread);
+  } else {
+    fd = -1;
+  }
+  return fd;
+}
+
+void find_next_fd(struct thread *curr) {
+  uint32_t i = (curr->fd_curr)+1;
+
+  for (i = (curr->fd_curr)+1; i < 128; i++) {
+    if (curr->fd_table[i] == NULL) {
+      curr->fd_curr = i;
+      break;
+    }
+  }
+  if (i == 128) {
+    curr->fd_curr = 128;
+  }
+
 }
 
 

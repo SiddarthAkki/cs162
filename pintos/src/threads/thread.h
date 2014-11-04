@@ -119,7 +119,7 @@ struct thread
 
     struct file *fd_table[128];      /* File descriptor table */
 
-    uint32_t curr_fd;
+    uint32_t fd_curr;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

@@ -464,6 +464,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   list_init(&t->children_wait);
   t->parent_wait = NULL;
+  t->fd_curr = 2;
+
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
