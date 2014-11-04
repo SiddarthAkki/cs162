@@ -13,6 +13,7 @@
 static void syscall_handler (struct intr_frame *);
 void find_next_fd(struct thread *curr);
 int find_fd(struct thread *curr_thread, uint32_t* args);
+void read_stdin(void *dst, size_t size);
 
 void
 syscall_init (void) 
@@ -107,7 +108,8 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_READ:
         if (valid_pointer(args+2) && valid_pointer(args[2])) {
           if (args[1] == 0) {
-
+            read_stdin(args[2], args[3]);
+            f->eax = args[3];
           } else {
             if (args[1] < 128 && args[1] > 0) {
               if (((curr_thread->fd_table)[args[1]]) != NULL) {
@@ -129,16 +131,43 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_WRITE:
-        if (valid_pointer(args[2])){
-          printf("%s", ((char*) args[2]));
-          f->eax = args[3];
+        if (valid_pointer(args[2]) && valid_pointer(args[2])) {
+          if (args[1] == 1) {
+            putbuf(args[2], args[3]);
+          } else {
+            if (args[1] < 128 && args[1] > 0) {
+              if (((curr_thread->fd_table)[args[1]]) != NULL) {
+                f->eax = file_write(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
+              } else {
+                f->eax = -1;
+              }
+            } else {
+              f->eax = -1;
+            }
+          }
         } else {
           thread_exit();
         }
         break;
 
+    case SYS_SEEK:
+        break;
+
+    case SYS_TELL:
+        break;
+
     default:
         break;
+  }
+}
+
+void read_stdin(void *dst, size_t size) {
+  int i;
+  char c;
+  for (i = 0; i < size; i++) {
+    c = input_getc();
+    memcpy(dst, (void *)&c, 1);
+    dst++;
   }
 }
 
