@@ -151,9 +151,28 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_SEEK:
+        if (args[1] < 128 && args[1] > 0) {
+          if (((curr_thread->fd_table)[args[1]]) != NULL) {
+            file_seek(((curr_thread->fd_table)[args[1]]), args[2]);
+          }
+        }
         break;
 
     case SYS_TELL:
+        if (args[1] < 128 && args[1] > 0) {
+          if (((curr_thread->fd_table)[args[1]]) != NULL) {
+            f->eax = file_tell(((curr_thread->fd_table)[args[1]]));
+          }
+        }
+        break;
+
+    case SYS_CLOSE:
+        if (args[1] < 128 && args[1] > 0) {
+          (curr_thread->fd_table)[args[1]] = NULL;
+          if (args[1] < curr_thread->fd_curr) {
+            curr_thread->fd_curr = args[1];
+          }
+        }
         break;
 
     default:
