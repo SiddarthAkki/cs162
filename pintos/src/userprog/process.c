@@ -195,6 +195,11 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  struct file *file = filesys_open (cur->name);
+  if (file != NULL) {
+      file_close(file);
+  }
+
   pd = cur->pagedir;
   if (pd != NULL) {
       /* Correct ordering here is crucial.  We must set
@@ -357,6 +362,7 @@ load (char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  file_deny_write(file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -478,7 +484,9 @@ load (char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if (success == false) {
+    file_close (file);
+  }
   return success;
 }
 
