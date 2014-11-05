@@ -489,6 +489,7 @@ load (char *file_name, void (**eip) (void), void **esp)
   /* We arrive here whether the load is successful or not. */
   if (success == false) {
     file_close (file);
+    t->fd_table[--t->fd_curr] = NULL;
   }
   return success;
 }
