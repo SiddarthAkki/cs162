@@ -200,10 +200,6 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  struct file *file = filesys_open (cur->name);
-  if (file != NULL) {
-      file_close(file);
-  }
 
   pd = cur->pagedir;
   if (pd != NULL) {
@@ -368,6 +364,8 @@ load (char *file_name, void (**eip) (void), void **esp)
       goto done; 
     }
   file_deny_write(file);
+  t->fd_table[t->fd_curr] = file;
+  t->fd_curr++;
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
