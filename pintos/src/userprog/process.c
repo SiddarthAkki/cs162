@@ -193,6 +193,11 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  int fd;
+  for (fd = 2; fd < 128; fd++) {
+    file_close((cur->fd_table)[fd]);
+  }
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   struct file *file = filesys_open (cur->name);
