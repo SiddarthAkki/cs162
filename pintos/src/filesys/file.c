@@ -19,18 +19,21 @@
 struct file *
 file_open (struct inode *inode) 
 {
+  lock_acquire(&file_lock);
   struct file *file = calloc (1, sizeof *file);
   if (inode != NULL && file != NULL)
     {
       file->inode = inode;
       file->pos = 0;
       file->deny_write = false;
+      lock_release(&file_lock);
       return file;
     }
   else
     {
       inode_close (inode);
       free (file);
+      lock_release(&file_lock);
       return NULL; 
     }
 }
@@ -47,12 +50,14 @@ file_reopen (struct file *file)
 void
 file_close (struct file *file) 
 {
+  lock_acquire(&file_lock);
   if (file != NULL)
     {
       file_allow_write (file);
       inode_close (file->inode);
       free (file); 
     }
+  lock_release(&file_lock);
 }
 
 /* Returns the inode encapsulated by FILE. */
@@ -120,12 +125,14 @@ file_write_at (struct file *file, const void *buffer, off_t size,
 void
 file_deny_write (struct file *file) 
 {
+  lock_acquire(&file_lock);
   ASSERT (file != NULL);
   if (!file->deny_write) 
     {
       file->deny_write = true;
       inode_deny_write (file->inode);
     }
+  lock_release(&file_lock);
 }
 
 /* Re-enables write operations on FILE's underlying inode.
