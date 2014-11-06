@@ -105,6 +105,7 @@ start_process (void *temp_args)
     sema_up(&args->success);
     thread_exit ();
   } else  {
+    /* initialize wait_status */
     curr_thread->parent_wait = (wait_status *) malloc(sizeof(wait_status));
     if (curr_thread->parent_wait != NULL) {
       curr_thread->parent_wait->tid = thread_tid();
@@ -196,6 +197,7 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  /* Close all open file descriptors */
   int fd;
   for (fd = 2; fd < 128; fd++) {
     lock_acquire(&file_lock);
@@ -453,21 +455,29 @@ load (char *file_name, void (**eip) (void), void **esp)
   if (!setup_stack (esp))
     goto done;
 
+  /* Put arguments on the stack */
+    
+  /* Start the stack at the top of the user address space */
   int* argptr = size % 4 == 0 ? (int *)(PHYS_BASE - size) : (int *)(PHYS_BASE - (size + 4 - (size % 4)));
   argptr = argptr - (arg_len) - 4;
 
+  /* Set return address to 0 */
   *argptr = 0;
   int* end_argptr = argptr;
+  /* Set argc */
   *++argptr = arg_len;
   *++argptr = (int) (argptr + 1);
+  /* file_name has already been tokenized */
   char *str_iterator = file_name;
   size_t arg_size;
   char *stack_ptr = (char *) *esp;
   int k;
   for(k = arg_len;k > 0;k--) {
+    /* Obtain length of arg */
     while(str_iterator[0] == '\0' || str_iterator[0] == ' ') {
       str_iterator++;
     }
+    /* Plus one for null terminator */
     arg_size = strlen(str_iterator) + 1;
     stack_ptr -= arg_size;
     strlcpy(stack_ptr, str_iterator, arg_size);
