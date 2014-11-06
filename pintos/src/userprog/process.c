@@ -19,7 +19,6 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-//static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (char *cmdline, void (**eip) (void), void **esp);
 static void free_wait_status(wait_status *status);
@@ -141,9 +140,7 @@ start_process (void *temp_args)
    does nothing. */
 int
 process_wait (tid_t child_tid) 
-{
-  //sema_down(&temporary);
-    
+{    
     //iterate through list of child processes
     struct thread *curr_thread = thread_current();
     struct list *children = &curr_thread->children_wait;
@@ -241,7 +238,6 @@ process_exit (void)
     free_wait_status(temp_status);
   }
 
-    //sema_up(&temporary);
 }
 
 /* Sets up the CPU for running user code in the current
