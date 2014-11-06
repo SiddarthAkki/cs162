@@ -22,27 +22,27 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static int valid_pointer (void *vaddr) {
+static void valid_pointer (void *vaddr) {
   struct thread *cur = thread_current ();
   uint32_t *pd;
   pd = cur->pagedir;
 
-  return is_user_vaddr(vaddr) && (NULL != pagedir_get_page(pd, vaddr));
+  /*Test whether a pointer is valid. If the pointer is not 
+  word aligned then it could be within user space but the 
+  last byte of the word the pointer points to could be outside 
+  of the range (e.g. vaddr is PHYS_BASE - 1).*/
+  if (!(is_user_vaddr((void *)(((unsigned) vaddr) + 3)) && (NULL != pagedir_get_page(pd, vaddr)))) {
+      thread_exit();
+    }
 }
 
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
   uint32_t* args = ((uint32_t*) f->esp);
-  //printf("System call number: %d\n", args[0]);
-  //char* str;
   struct wait_status *cur_status;
-  if (!valid_pointer(args))
-  {
-      thread_exit();
-  }
+  valid_pointer(args);
   struct thread *curr_thread = thread_current();
-  //uint32_t prev_fd = curr_thread->fd_curr;
   switch(args[0]) 
   {
     case SYS_HALT:
@@ -51,7 +51,8 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_EXIT:
         cur_status = thread_current()->parent_wait;
-        if (cur_status != NULL && valid_pointer(args + 1)) {
+        if (cur_status != NULL) {
+          valid_pointer(args + 1);
           cur_status->exit_code = args[1];
         }
         thread_exit();
@@ -59,109 +60,97 @@ syscall_handler (struct intr_frame *f UNUSED)
     //open file and call file_deny_write()
     //when process exits call file_allow_write()
     case SYS_EXEC:
-        if (valid_pointer(args[1])){
-          // find_fd(curr_thread, args);
-          // file_deny_write(curr_thread->fd_table[prev_fd]);
-          f->eax = process_execute(args[1]);
-        } else {
-          thread_exit();
-        }
+        valid_pointer(args+1);
+        valid_pointer(args[1]);
+        f->eax = process_execute(args[1]);
         break;
 
     case SYS_WAIT:
+        valid_pointer(args+1);
         f->eax = process_wait(args[1]);
         break;
 
     case SYS_CREATE:
-        if (valid_pointer(args[1])) {
-          lock_acquire(&file_lock);
-          f->eax = filesys_create(args[1], args[2]);
-          lock_release(&file_lock);
-        } else {
-          thread_exit();
-        }
+        valid_pointer(args+2);
+        valid_pointer(args[1]);
+
+        lock_acquire(&file_lock);
+        f->eax = filesys_create(args[1], args[2]);
+        lock_release(&file_lock);
         break;
 
     case SYS_REMOVE:
-        if (valid_pointer(args+1) && valid_pointer(args[1])) {
-          lock_acquire(&file_lock);
-          bool removed = filesys_remove(args[1]);
-          lock_release(&file_lock);
-          f->eax = removed;
-        } else {
-          thread_exit();
-        }
+        valid_pointer(args+1);
+        valid_pointer(args[1]);
+        lock_acquire(&file_lock);
+        bool removed = filesys_remove(args[1]);
+        lock_release(&file_lock);
+        f->eax = removed;
         break;
 
     case SYS_OPEN:
-        if (valid_pointer(args+1) && valid_pointer(args[1])) {
-          if (curr_thread->fd_curr < 128) {
-            f->eax = find_fd(curr_thread, args);
-          } else {
-            f->eax = -1;
-          }
+        valid_pointer(args+1);
+        valid_pointer(args[1]);
+        if (curr_thread->fd_curr < 128) {
+          f->eax = find_fd(curr_thread, args);
         } else {
-          thread_exit();
+          f->eax = -1;
         }
         break;
 
     case SYS_FILESIZE:
+        valid_pointer(args+1);
         if (((curr_thread->fd_table)[args[1]]) != NULL) {
           lock_acquire(&file_lock);
           f->eax = file_length((curr_thread->fd_table)[args[1]]);
           lock_release(&file_lock);
-          
-        } else {
-          thread_exit();
+
         }
         break;
 
     case SYS_READ:
-        if (valid_pointer(args+2) && valid_pointer(args[2])) {
-          if (args[1] == 0) {
-            read_stdin(args[2], args[3]);
-            f->eax = args[3];
-          } else {
-            if (args[1] < 128 && args[1] > 0) {
-              if (((curr_thread->fd_table)[args[1]]) != NULL) {
+        valid_pointer(args+3);
+        valid_pointer(args[2]);
+        if (args[1] == 0) {
+          read_stdin(args[2], args[3]);
+          f->eax = args[3];
+        } else {
+          if (args[1] < 128 && args[1] > 0) {
+            if (((curr_thread->fd_table)[args[1]]) != NULL) {
 
-                lock_acquire(&file_lock);
-                f->eax = file_read(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
-                lock_release(&file_lock);
+              lock_acquire(&file_lock);
+              f->eax = file_read(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
+              lock_release(&file_lock);
 
-              } else {
-                f->eax = -1;
-              }
             } else {
               f->eax = -1;
             }
+          } else {
+            f->eax = -1;
           }
-        } else {
-          thread_exit();
         }
         break;
 
     case SYS_WRITE:
-        if (valid_pointer(args[2]) && valid_pointer(args[2])) {
-          if (args[1] == 1) {
-            putbuf(args[2], args[3]);
-          } else {
-            if (args[1] < 128 && args[1] > 0) {
-              if (((curr_thread->fd_table)[args[1]]) != NULL) {
-                f->eax = file_write(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
-              } else {
-                f->eax = -1;
-              }
+        valid_pointer(args+3);
+        valid_pointer(args[2]);
+        if (args[1] == 1) {
+          putbuf(args[2], args[3]);
+        } else {
+          if (args[1] < 128 && args[1] > 0) {
+            if (((curr_thread->fd_table)[args[1]]) != NULL) {
+              f->eax = file_write(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
             } else {
               f->eax = -1;
             }
+          } else {
+            f->eax = -1;
           }
-        } else {
-          thread_exit();
         }
         break;
 
     case SYS_SEEK:
+        valid_pointer(args+2);
         if (args[1] < 128 && args[1] > 0) {
           if (((curr_thread->fd_table)[args[1]]) != NULL) {
 
@@ -173,6 +162,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_TELL:
+        valid_pointer(args+1);
         if (args[1] < 128 && args[1] > 0) {
           if (((curr_thread->fd_table)[args[1]]) != NULL) {
 
@@ -184,6 +174,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_CLOSE:
+        valid_pointer(args+1);
         if (args[1] < 128 && args[1] > 0) {
           lock_acquire(&file_lock);
           file_close((curr_thread->fd_table)[args[1]]);

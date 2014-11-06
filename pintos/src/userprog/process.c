@@ -445,21 +445,9 @@ load (char *file_name, void (**eip) (void), void **esp)
         }
     }
 
-  // char *token, *save_ptr;
-  // size_t size;
-  // size_t arg_len;
-
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
-
-  // size = 0;
-  // arg_len = 0;
-  // for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
-  //   token = strtok_r (NULL, " ", &save_ptr)) {
-  //   size += (strlen(token) + 1);
-  //   arg_len++;
-  // }
 
   int* argptr = size % 4 == 0 ? (int *)(PHYS_BASE - size) : (int *)(PHYS_BASE - (size + 4 - (size % 4)));
   argptr = argptr - (arg_len) - 4;
