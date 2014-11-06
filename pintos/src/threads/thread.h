@@ -34,8 +34,8 @@ typedef struct wait_status {
   tid_t tid;
   int exit_code;
   struct semaphore dead;
-  int initial_success;
-  struct semaphore success;
+  //  int initial_success;
+  //struct semaphore success;
 } wait_status;
 
 /* A kernel thread or user process.

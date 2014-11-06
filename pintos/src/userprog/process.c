@@ -26,6 +26,7 @@ static bool load (char *cmdline, void (**eip) (void), void **esp);
 struct argpass {
   wait_status *status;
   char *fn_copy;
+  struct semaphore success;
 };
 
 /* Starts a new thread running a user program loaded from
@@ -40,7 +41,6 @@ process_execute (const char *file_name)
   char fn_name[15];
 
 
-  //sema_init(&temporary, 0);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -57,30 +57,22 @@ process_execute (const char *file_name)
   }
   fn_name[i] = '\0';
   
-  wait_status *wait_stat = (wait_status *) malloc(sizeof(wait_status));
-  lock_init(&(wait_stat->lock));
-  sema_init(&(wait_stat->dead), 0);
-  sema_init(&(wait_stat->success), 0);
-  wait_stat->ref_cnt = 2;
-  wait_stat->exit_code = -1;
-  
   struct argpass args;
+  sema_init(&(args.success), 0);
   args.fn_copy = fn_copy;
-  args.status = wait_stat;
+  args.status = NULL;
   struct thread *curr_thread = thread_current();
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (fn_name, PRI_DEFAULT, start_process, &args);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
-    free(wait_stat);
     return -1;
   } else {
-    sema_down(&wait_stat->success);
-    if (wait_stat->initial_success != -1) {
-      list_push_front(&curr_thread->children_wait, &wait_stat->elem);
+    sema_down(&(args.success));
+    if (args.status != NULL) {
+      list_push_front(&curr_thread->children_wait, &(args.status->elem));
       return tid;
     } else {
-      free(wait_stat);
       return -1;
     }
   }
@@ -92,11 +84,8 @@ static void
 start_process (void *temp_args)
 {
   struct argpass *args = temp_args;
-  wait_status *status = args->status;
   char *file_name = args->fn_copy;
   struct thread *curr_thread = thread_current();
-  curr_thread->parent_wait = status;
-  curr_thread->parent_wait->tid = thread_tid();
   struct intr_frame if_;
   bool success;
 
@@ -111,12 +100,22 @@ start_process (void *temp_args)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    curr_thread->parent_wait->initial_success = -1;
-    sema_up(&(curr_thread->parent_wait->success));
+    sema_up(&args->success);
     thread_exit ();
   } else  {
-    curr_thread->parent_wait->initial_success = 1;
-    sema_up(&(curr_thread->parent_wait->success));
+    curr_thread->parent_wait = (wait_status *) malloc(sizeof(wait_status));
+    if (curr_thread->parent_wait != NULL) {
+    curr_thread->parent_wait->tid = thread_tid();
+    curr_thread->parent_wait->ref_cnt = 2;
+    curr_thread->parent_wait->exit_code = -1;
+    lock_init(&curr_thread->parent_wait->lock);
+    sema_init(&curr_thread->parent_wait->dead, 0);
+    args->status = curr_thread->parent_wait;
+    sema_up(&args->success);
+    } else {
+      sema_up(&args->success);
+      thread_exit();
+    }
   }
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
