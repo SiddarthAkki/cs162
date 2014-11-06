@@ -22,6 +22,7 @@
 //static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (char *cmdline, void (**eip) (void), void **esp);
+static void free_wait_status(wait_status *status);
 
 struct argpass {
   wait_status *status;
@@ -175,7 +176,7 @@ process_wait (tid_t child_tid)
     return exit_code;
 }
 
-void free_wait_status(wait_status *status) {
+static void free_wait_status(wait_status *status) {
   lock_acquire(&status->lock);
   status->ref_cnt--;
   if (status->ref_cnt == 0) {
@@ -455,7 +456,7 @@ load (char *file_name, void (**eip) (void), void **esp)
   *argptr = 0;
   int* end_argptr = argptr;
   *++argptr = arg_len;
-  *++argptr = argptr+1;
+  *++argptr = (int) (argptr + 1);
   char *str_iterator = file_name;
   size_t arg_size;
   char *stack_ptr = (char *) *esp;
@@ -468,7 +469,7 @@ load (char *file_name, void (**eip) (void), void **esp)
     stack_ptr -= arg_size;
     strlcpy(stack_ptr, str_iterator, arg_size);
     str_iterator += arg_size;
-    *++argptr = stack_ptr;
+    *++argptr = (int) stack_ptr;
   }
 
   *++argptr = 0;

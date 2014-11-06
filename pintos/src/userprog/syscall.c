@@ -10,6 +10,9 @@
 #include "threads/vaddr.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
+#include "lib/string.h"
+#include "devices/input.h"
+#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
 void find_next_fd(struct thread *curr);
@@ -52,7 +55,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_EXIT:
         cur_status = thread_current()->parent_wait;
         if (cur_status != NULL) {
-          valid_pointer(args + 1);
+          valid_pointer((void *) (args + 1));
           cur_status->exit_code = args[1];
         }
         thread_exit();
@@ -60,37 +63,37 @@ syscall_handler (struct intr_frame *f UNUSED)
     //open file and call file_deny_write()
     //when process exits call file_allow_write()
     case SYS_EXEC:
-        valid_pointer(args+1);
-        valid_pointer(args[1]);
-        f->eax = process_execute(args[1]);
+        valid_pointer((void *) (args+1));
+        valid_pointer((void *) args[1]);
+        f->eax = process_execute((char *) args[1]);
         break;
 
     case SYS_WAIT:
-        valid_pointer(args+1);
+        valid_pointer((void *) (args+1));
         f->eax = process_wait(args[1]);
         break;
 
     case SYS_CREATE:
-        valid_pointer(args+2);
-        valid_pointer(args[1]);
+        valid_pointer((void *) args+2);
+        valid_pointer((void *) args[1]);
 
         lock_acquire(&file_lock);
-        f->eax = filesys_create(args[1], args[2]);
+        f->eax = filesys_create((char *) args[1], args[2]);
         lock_release(&file_lock);
         break;
 
     case SYS_REMOVE:
-        valid_pointer(args+1);
-        valid_pointer(args[1]);
+        valid_pointer((void *) (args+1));
+        valid_pointer((void *) args[1]);
         lock_acquire(&file_lock);
-        bool removed = filesys_remove(args[1]);
+        bool removed = filesys_remove((char *) args[1]);
         lock_release(&file_lock);
         f->eax = removed;
         break;
 
     case SYS_OPEN:
-        valid_pointer(args+1);
-        valid_pointer(args[1]);
+        valid_pointer((void *) (args+1));
+        valid_pointer((void *) args[1]);
         if (curr_thread->fd_curr < 128) {
           f->eax = find_fd(curr_thread, args);
         } else {
@@ -99,7 +102,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_FILESIZE:
-        valid_pointer(args+1);
+        valid_pointer((void *) (args+1));
         if (((curr_thread->fd_table)[args[1]]) != NULL) {
           lock_acquire(&file_lock);
           f->eax = file_length((curr_thread->fd_table)[args[1]]);
@@ -109,17 +112,17 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_READ:
-        valid_pointer(args+3);
-        valid_pointer(args[2]);
+        valid_pointer((void *) (args+3));
+        valid_pointer((void *) args[2]);
         if (args[1] == 0) {
-          read_stdin(args[2], args[3]);
+          read_stdin((void *) args[2], args[3]);
           f->eax = args[3];
         } else {
           if (args[1] < 128 && args[1] > 0) {
             if (((curr_thread->fd_table)[args[1]]) != NULL) {
 
               lock_acquire(&file_lock);
-              f->eax = file_read(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
+              f->eax = file_read(((curr_thread->fd_table)[args[1]]), (void *) args[2], args[3]);
               lock_release(&file_lock);
 
             } else {
@@ -132,14 +135,14 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_WRITE:
-        valid_pointer(args+3);
-        valid_pointer(args[2]);
+        valid_pointer((void *) (args+3));
+        valid_pointer((void *) args[2]);
         if (args[1] == 1) {
-          putbuf(args[2], args[3]);
+          putbuf((char *) args[2], args[3]);
         } else {
           if (args[1] < 128 && args[1] > 0) {
             if (((curr_thread->fd_table)[args[1]]) != NULL) {
-              f->eax = file_write(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
+              f->eax = file_write(((curr_thread->fd_table)[args[1]]), (void *) args[2], args[3]);
             } else {
               f->eax = -1;
             }
@@ -150,7 +153,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_SEEK:
-        valid_pointer(args+2);
+        valid_pointer((void *) (args+2));
         if (args[1] < 128 && args[1] > 0) {
           if (((curr_thread->fd_table)[args[1]]) != NULL) {
 
@@ -162,7 +165,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_TELL:
-        valid_pointer(args+1);
+        valid_pointer((void *) (args+1));
         if (args[1] < 128 && args[1] > 0) {
           if (((curr_thread->fd_table)[args[1]]) != NULL) {
 
@@ -174,7 +177,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
 
     case SYS_CLOSE:
-        valid_pointer(args+1);
+        valid_pointer((void *) (args+1));
         if (args[1] < 128 && args[1] > 0) {
           lock_acquire(&file_lock);
           file_close((curr_thread->fd_table)[args[1]]);
@@ -197,7 +200,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 }
 
 void read_stdin(void *dst, size_t size) {
-  int i;
+  unsigned i;
   char c;
   for (i = 0; i < size; i++) {
     c = input_getc();
@@ -208,7 +211,7 @@ void read_stdin(void *dst, size_t size) {
 
 int find_fd(struct thread *curr_thread, uint32_t* args) {
   lock_acquire(&file_lock);
-  struct file *curr_file = filesys_open(args[1]);
+  struct file *curr_file = filesys_open((char *) args[1]);
   lock_release(&file_lock);
   int fd;
   if (curr_file != NULL) {
