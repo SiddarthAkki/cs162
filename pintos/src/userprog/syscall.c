@@ -9,6 +9,7 @@
 #include "userprog/pagedir.h"
 #include "threads/vaddr.h"
 #include "filesys/filesys.h"
+#include "threads/synch.h"
 
 static void syscall_handler (struct intr_frame *);
 void find_next_fd(struct thread *curr);
@@ -73,7 +74,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_CREATE:
         if (valid_pointer(args[1])) {
+          lock_acquire(&file_lock);
           f->eax = filesys_create(args[1], args[2]);
+          lock_release(&file_lock);
         } else {
           thread_exit();
         }
@@ -81,7 +84,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_REMOVE:
         if (valid_pointer(args+1) && valid_pointer(args[1])) {
+          lock_acquire(&file_lock);
           bool removed = filesys_remove(args[1]);
+          lock_release(&file_lock);
           f->eax = removed;
         } else {
           thread_exit();
@@ -102,7 +107,10 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_FILESIZE:
         if (((curr_thread->fd_table)[args[1]]) != NULL) {
+          lock_acquire(&file_lock);
           f->eax = file_length((curr_thread->fd_table)[args[1]]);
+          lock_release(&file_lock);
+          
         } else {
           thread_exit();
         }
@@ -116,7 +124,11 @@ syscall_handler (struct intr_frame *f UNUSED)
           } else {
             if (args[1] < 128 && args[1] > 0) {
               if (((curr_thread->fd_table)[args[1]]) != NULL) {
+
+                lock_acquire(&file_lock);
                 f->eax = file_read(((curr_thread->fd_table)[args[1]]), args[2], args[3]);
+                lock_release(&file_lock);
+
               } else {
                 f->eax = -1;
               }
@@ -152,7 +164,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_SEEK:
         if (args[1] < 128 && args[1] > 0) {
           if (((curr_thread->fd_table)[args[1]]) != NULL) {
+
+            lock_acquire(&file_lock);
             file_seek(((curr_thread->fd_table)[args[1]]), args[2]);
+            lock_release(&file_lock);
           }
         }
         break;
@@ -160,14 +175,20 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_TELL:
         if (args[1] < 128 && args[1] > 0) {
           if (((curr_thread->fd_table)[args[1]]) != NULL) {
+
+            lock_acquire(&file_lock);
             f->eax = file_tell(((curr_thread->fd_table)[args[1]]));
+            lock_release(&file_lock);
           }
         }
         break;
 
     case SYS_CLOSE:
         if (args[1] < 128 && args[1] > 0) {
+          lock_acquire(&file_lock);
           file_close((curr_thread->fd_table)[args[1]]);
+          lock_release(&file_lock);
+
           (curr_thread->fd_table)[args[1]] = NULL;
           if (args[1] < curr_thread->fd_curr) {
             curr_thread->fd_curr = args[1];
@@ -195,7 +216,9 @@ void read_stdin(void *dst, size_t size) {
 }
 
 int find_fd(struct thread *curr_thread, uint32_t* args) {
+  lock_acquire(&file_lock);
   struct file *curr_file = filesys_open(args[1]);
+  lock_release(&file_lock);
   int fd;
   if (curr_file != NULL) {
     fd = curr_thread->fd_curr;

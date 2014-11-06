@@ -6,6 +6,7 @@
 
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
 struct inode;
 
@@ -17,6 +18,8 @@ struct file
     bool deny_write;            /* Has file_deny_write() been called? */
   };
 
+/* Filesystem Lock */
+struct lock file_lock;
 /* Opening and closing files. */
 struct file *file_open (struct inode *);
 struct file *file_reopen (struct file *);

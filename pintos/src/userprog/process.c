@@ -194,7 +194,9 @@ process_exit (void)
 
   int fd;
   for (fd = 2; fd < 128; fd++) {
+    lock_acquire(&file_lock);
     file_close((cur->fd_table)[fd]);
+    lock_release(&file_lock);
   }
 
   /* Destroy the current process's page directory and switch back
@@ -356,13 +358,18 @@ load (char *file_name, void (**eip) (void), void **esp)
   }
 
   /* Open executable file. */
+  lock_acquire(&file_lock);
   file = filesys_open (file_name);
+  lock_release(&file_lock);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  lock_acquire(&file_lock);
   file_deny_write(file);
+  lock_release(&file_lock);
+
   t->fd_table[t->fd_curr] = file;
   t->fd_curr++;
 
@@ -487,7 +494,10 @@ load (char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   if (success == false) {
+    lock_acquire(&file_lock);
     file_close (file);
+    lock_release(&file_lock);
+
     t->fd_table[--t->fd_curr] = NULL;
   }
   return success;
