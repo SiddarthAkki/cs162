@@ -28,12 +28,14 @@ typedef int tid_t;
 
 /* Wait status struct to be referenced between a process and its child */
 typedef struct wait_status {
-  struct list_elem elem;
-  struct lock lock;
-  int ref_cnt;
-  tid_t tid;
-  int exit_code;
-  struct semaphore dead;
+  struct list_elem elem; /* children list elem */
+  struct lock lock; /* Protects ref_cnt. */
+  int ref_cnt; /* 2=child and parent both alive,
+                  1=either child or parent alive,
+                  0=child and parent both dead. */
+  tid_t tid; /* Child thread id. */
+  int exit_code; /* Child exit code, if dead. */
+  struct semaphore dead; /* 1=child alive, 0=child dead. */
 } wait_status;
 
 /* A kernel thread or user process.
@@ -117,7 +119,7 @@ struct thread
 
     struct file *fd_table[128];      /* File descriptor table */
 
-    uint32_t fd_curr;
+    uint32_t fd_curr; /* Points to empty entry in fd_table if one exists */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

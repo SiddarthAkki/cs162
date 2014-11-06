@@ -25,6 +25,7 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
+/* Tests the validity of a pointer */
 static void valid_pointer (void *vaddr) {
   struct thread *cur = thread_current ();
   uint32_t *pd;
@@ -199,6 +200,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   }
 }
 
+/* Reads stdin into buffer */
 void read_stdin(void *dst, size_t size) {
   unsigned i;
   char c;
@@ -209,6 +211,7 @@ void read_stdin(void *dst, size_t size) {
   }
 }
 
+/* Finds a spot in the thread's fd_table for a newly opened file */
 int find_fd(struct thread *curr_thread, uint32_t* args) {
   lock_acquire(&file_lock);
   struct file *curr_file = filesys_open((char *) args[1]);
@@ -224,6 +227,7 @@ int find_fd(struct thread *curr_thread, uint32_t* args) {
   return fd;
 }
 
+/* Finds an empty spot in the fd_table */
 void find_next_fd(struct thread *curr) {
   uint32_t i = (curr->fd_curr)+1;
 

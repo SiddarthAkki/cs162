@@ -24,10 +24,11 @@ static thread_func start_process NO_RETURN;
 static bool load (char *cmdline, void (**eip) (void), void **esp);
 static void free_wait_status(wait_status *status);
 
+/* Used to combine arguments passed into start_process. */
 struct argpass {
-  wait_status *status;
-  char *fn_copy;
-  struct semaphore success;
+  wait_status *status; /* Wait status struct to be referenced between a process and its child */
+  char *fn_copy; /* A copy of FILE_NAME */
+  struct semaphore success; /* Prevent the parent process from returning from process_execute until the result of load has been established */
 };
 
 /* Starts a new thread running a user program loaded from
@@ -106,13 +107,13 @@ start_process (void *temp_args)
   } else  {
     curr_thread->parent_wait = (wait_status *) malloc(sizeof(wait_status));
     if (curr_thread->parent_wait != NULL) {
-    curr_thread->parent_wait->tid = thread_tid();
-    curr_thread->parent_wait->ref_cnt = 2;
-    curr_thread->parent_wait->exit_code = -1;
-    lock_init(&curr_thread->parent_wait->lock);
-    sema_init(&curr_thread->parent_wait->dead, 0);
-    args->status = curr_thread->parent_wait;
-    sema_up(&args->success);
+      curr_thread->parent_wait->tid = thread_tid();
+      curr_thread->parent_wait->ref_cnt = 2;
+      curr_thread->parent_wait->exit_code = -1;
+      lock_init(&curr_thread->parent_wait->lock);
+      sema_init(&curr_thread->parent_wait->dead, 0);
+      args->status = curr_thread->parent_wait;
+      sema_up(&args->success);
     } else {
       sema_up(&args->success);
       thread_exit();
@@ -176,6 +177,7 @@ process_wait (tid_t child_tid)
     return exit_code;
 }
 
+/* Free the wait status when the ref_cnt hits 0 */
 static void free_wait_status(wait_status *status) {
   lock_acquire(&status->lock);
   status->ref_cnt--;
@@ -186,6 +188,7 @@ static void free_wait_status(wait_status *status) {
     lock_release(&status->lock);
   }
 }
+
 /* Free the current process's resources. */
 void
 process_exit (void)
