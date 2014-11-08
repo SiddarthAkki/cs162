@@ -457,6 +457,12 @@ load (char *file_name, void (**eip) (void), void **esp)
   int* argptr = size % 4 == 0 ? (int *)(PHYS_BASE - size) : (int *)(PHYS_BASE - (size + 4 - (size % 4)));
   argptr = argptr - (arg_len) - 4;
 
+  //check if stack overflows
+  int stack_size = size % 4 == 0 ? (size) :(size + 4 - (size % 4));
+  stack_size += 4*arg_len + 4*4;
+  if stack_size > PGSIZE:
+    goto done;
+    
   /* Set return address to 0 */
   *argptr = 0;
   int* end_argptr = argptr;
