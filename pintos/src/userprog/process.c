@@ -458,9 +458,9 @@ load (char *file_name, void (**eip) (void), void **esp)
   argptr = argptr - (arg_len) - 4;
 
   //check if stack overflows
-  int stack_size = size % 4 == 0 ? (size) :(size + 4 - (size % 4));
+  int stack_size = size % 4 == 0 ? size : (size + 4 - (size % 4));
   stack_size += 4*arg_len + 4*4;
-  if stack_size > PGSIZE:
+  if (stack_size > PGSIZE)
     goto done;
     
   /* Set return address to 0 */
