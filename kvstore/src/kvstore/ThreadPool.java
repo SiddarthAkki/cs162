@@ -1,13 +1,14 @@
 package kvstore;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.*;
 
 public class ThreadPool {
 
     /* Array of threads in the threadpool */
     public Thread threads[];
     public Queue<Runnable> jobQueue; //added
-    public ReentrantLock queueLock; //added
+    public ReentrantLock queueLock =  new ReentrantLock(); //added
+    public Condition notEmpty  = queueLock.newCondition();
     /**
      * Constructs a Threadpool with a certain number of threads.
      *
@@ -23,6 +24,7 @@ public class ThreadPool {
             threads[i] = new WorkerThread(this);
             threads[i].start();
         }
+        
     }
 
     /**
@@ -34,9 +36,12 @@ public class ThreadPool {
      * @throws InterruptedException if thread is interrupted while in blocked
      *         state. Your implementation may or may not actually throw this.
      */
-    public synchronized void addJob(Runnable r) throws InterruptedException {
+    public void addJob(Runnable r) throws InterruptedException {
         // implement me
+        queueLock.lock();
         jobQueue.add(r);
+        notEmpty.signal();
+        queueLock.unlock();
     }
 
     /**
@@ -47,6 +52,7 @@ public class ThreadPool {
      */
     public Runnable getJob() throws InterruptedException {
         // implement me
+        /*
         while (true)
         {
             //busy wait
@@ -61,7 +67,15 @@ public class ThreadPool {
             }
             
         }
-        
+         */
+        queueLock.lock();
+        while (jobQueue.isEmpty())
+        {
+            notEmpty.await();
+        }
+        Runnable removed = jobQueue.remove();
+        queueLock.unlock();
+        return removed;
     }
 
     /**
