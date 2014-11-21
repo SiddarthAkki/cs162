@@ -3,6 +3,7 @@ package kvstore;
 import static kvstore.KVConstants.DEL_REQ;
 import static kvstore.KVConstants.ERROR_COULD_NOT_CONNECT;
 import static kvstore.KVConstants.ERROR_COULD_NOT_CREATE_SOCKET;
+import static kvstore.KVConstants.ERROR_NO_SUCH_KEY;
 import static kvstore.KVConstants.ERROR_INVALID_KEY;
 import static kvstore.KVConstants.ERROR_INVALID_VALUE;
 import static kvstore.KVConstants.GET_REQ;
@@ -40,8 +41,13 @@ public class KVClient implements KeyValueInterface {
      * @throws KVException if unable to create or connect socket
      */
     public Socket connectHost() throws KVException {
-        // implement me
-        return null;
+	try {
+	    return new Socket(this.server, this.port);
+	} catch (UnknownHostException | SecurityException | IllegalArgumentException e) {
+	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+	} catch (IOException e) {
+	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+	}
     }
 
     /**
@@ -51,7 +57,9 @@ public class KVClient implements KeyValueInterface {
      * @param  sock Socket to be closed
      */
     public void closeHost(Socket sock) {
-        // implement me
+	try {
+	    sock.close();
+	} catch (IOException e) {}
     }
 
     /**
@@ -62,7 +70,15 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public void put(String key, String value) throws KVException {
-        // implement me
+	KVMessage putRequest = new KVMessage(PUT_REQ);
+	putRequest.setKey(key);
+	putRequest.setValue(value);
+	Socket sock = connectHost();
+	putRequest.sendMessage(sock);
+	KVMessage receive = new KVMessage(sock);
+	if (!receive.getMessage().equals(SUCCESS)) {
+	    throw new KVException(ERROR_INVALID_VALUE);
+	}
     }
 
     /**
@@ -74,8 +90,15 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public String get(String key) throws KVException {
-        // implement me
-        return null;
+	KVMessage getRequest = new KVMessage(GET_REQ);
+	getRequest.setKey(key);
+	Socket sock = connectHost();
+	getRequest.sendMessage(sock);
+	KVMessage response = new KVMessage(sock);
+	if (response.getKey() == null) {
+	    throw new KVException(ERROR_NO_SUCH_KEY);
+	}
+	return response.getValue();
     }
 
     /**
@@ -86,7 +109,14 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public void del(String key) throws KVException {
-        // implement me
+	KVMessage delRequest = new KVMessage(DEL_REQ);
+	delRequest.setKey(key);
+	Socket sock = connectHost();
+	delRequest.sendMessage(sock);
+	KVMessage response = new KVMessage(sock);
+	if (!response.getMessage().equals(SUCCESS)) {
+	    throw new KVException(ERROR_NO_SUCH_KEY);
+	}
     }
 
 
