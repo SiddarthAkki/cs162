@@ -4,6 +4,7 @@ import static kvstore.KVConstants.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 import javax.xml.bind.JAXBContext;
@@ -79,7 +80,27 @@ public class KVMessage implements Serializable {
      *         KVConstants.java for possible KVException messages.
      */
     public KVMessage(Socket sock, int timeout) throws KVException {
-        // implement me
+	try {
+	    sock.setSoTimeout(timeout);
+	} catch (SocketException e) {
+	    throw new KVException(KVConstants.ERROR_SOCKET_TIMEOUT);
+	}
+	InputStream in;
+	try {
+	    in = sock.getInputStream();
+	} catch (IOException e) {
+	    throw new KVException(KVConstants.ERROR_COULD_NOT_RECEIVE_DATA);
+	}
+	KVMessageType message;
+	try {
+	    message = unmarshal(in);
+	} catch (JAXBException e) {
+	    throw new KVException(KVConstants.ERROR_PARSER);
+	}
+	this.msgType = message.getType();
+	this.message = message.getMessage();
+	this.key = message.getKey();
+	this.value = message.getValue();
     }
 
     /**
@@ -88,7 +109,10 @@ public class KVMessage implements Serializable {
      * @param kvm KVMessage with fields to copy
      */
     public KVMessage(KVMessage kvm) {
-        // implement me
+	this.msgType = kvm.getMsgType();
+	this.message = kvm.getMessage();
+	this.key = kvm.getKey();
+	this.value = kvm.getValue();
     }
 
     
@@ -102,7 +126,10 @@ public class KVMessage implements Serializable {
     private JAXBElement<KVMessageType> getXMLRoot() throws JAXBException, KVException {
         ObjectFactory factory = new ObjectFactory();
         KVMessageType xmlStore = factory.createKVMessageType();
-        //implement me
+	xmlStore.setKey(getKey());
+	xmlStore.setValue(getValue());
+	xmlStore.setMessage(getMessage());
+	xmlStore.setType(getMsgType());
         return factory.createKVMessage(xmlStore);
     }
 
@@ -168,7 +195,24 @@ public class KVMessage implements Serializable {
      *         ERROR_COULD_NOT_SEND_DATA
      */
     public void sendMessage(Socket sock) throws KVException {
-        // implement me
+	OutputStream os;
+	try {
+	    os = sock.getOutputStream();
+	} catch (IOException e) {
+	    throw new KVException(KVConstants.ERROR_COULD_NOT_SEND_DATA);
+	}
+	try {
+	    marshalTo(os);
+	} catch (JAXBException e) {
+	    throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+	} catch (KVException e) {
+	    throw new KVException(KVConstants.ERROR_PARSER);
+	}
+	try {
+	    sock.shutdownOutput();
+	} catch (IOException e) {
+	    throw new KVException(KVConstants.ERROR_COULD_NOT_SEND_DATA);
+	}
     }
 
     public String getKey() {
