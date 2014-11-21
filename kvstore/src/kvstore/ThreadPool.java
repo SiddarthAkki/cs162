@@ -1,11 +1,11 @@
 package kvstore;
-
+import java.util.*;
 
 public class ThreadPool {
 
     /* Array of threads in the threadpool */
     public Thread threads[];
-
+    public Queue<Runnable> jobQueue; //added
 
     /**
      * Constructs a Threadpool with a certain number of threads.
@@ -14,8 +14,14 @@ public class ThreadPool {
      */
     public ThreadPool(int size) {
         threads = new Thread[size];
-
+        
         // implement me
+        jobQueue = new LinkedList<Runnable>();
+        for (int i = 0; i < threads.length; i++)
+        {
+            threads[i] = new WorkerThread(this);
+            threads[i].run();
+        }
     }
 
     /**
@@ -29,6 +35,7 @@ public class ThreadPool {
      */
     public void addJob(Runnable r) throws InterruptedException {
         // implement me
+        jobQueue.add(r);
     }
 
     /**
@@ -39,7 +46,12 @@ public class ThreadPool {
      */
     public Runnable getJob() throws InterruptedException {
         // implement me
-        return null;
+        while (jobQueue.isEmpty())
+        {
+            //busy wait
+            //need to add synchronization 
+        }
+        return jobQueue.remove();
     }
 
     /**
@@ -64,6 +76,18 @@ public class ThreadPool {
         @Override
         public void run() {
             // implement me
+            while (true)
+            {
+                System.out.println("running");
+                try
+                {
+                    threadPool.getJob().run();
+                }
+                catch (InterruptedException e)
+                {
+                    //do something I guess?
+                }
+            }
         }
     }
 }
