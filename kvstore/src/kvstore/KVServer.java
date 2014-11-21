@@ -42,6 +42,21 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void put(String key, String value) throws KVException {
         // implement me
+        if (key.length() > MAX_KEY_SIZE)
+        {
+            throw new KVException(ERROR_OVERSIZED_KEY);
+        }
+        
+        if (value.length() > MAX_VAL_SIZE)
+        {
+            throw new KVException(ERROR_OVERSIZED_VALUE);
+        }
+        
+        Lock setLock = this.dataCache.getLock(key);
+        setLock.lock();
+        this.dataCache.put(key, value);
+        setLock.unlock();
+        this.dataStore.put(key, value);
     }
 
     /**
@@ -55,7 +70,29 @@ public class KVServer implements KeyValueInterface {
     @Override
     public String get(String key) throws KVException {
         // implement me
-        return null;
+        Lock setLock = this.dataCache.getLock(key);
+        setLock.lock();
+        
+        String value = this.dataCache.get(key);
+        setLock.unlock();
+        if ( value != null)
+        {
+            //cache has key
+            return value;
+        }
+        else
+        {
+            //look in store, which will throw exception if key does not exist in store
+            value = this.dataStore.get(key);
+            
+            //no exception thrown
+            setLock.lock();
+            this.dataCache.put(key, value);
+            setLock.unlock();
+            return value;
+        }
+        
+        //return null;
     }
 
     /**
@@ -67,6 +104,14 @@ public class KVServer implements KeyValueInterface {
     @Override
     public void del(String key) throws KVException {
         // implement me
+        Lock setLock = this.dataCache.getLock(key);
+        setLock.lock();
+        this.dataCache.del(key);
+        setLock.unlock();
+        
+        //store may throw exception
+        this.dataStore.del(key);
+        
     }
 
     /**
@@ -79,7 +124,15 @@ public class KVServer implements KeyValueInterface {
      */
     public boolean hasKey(String key) {
         // implement me
-        return false;
+        try
+        {
+            this.dataStore.get(key);
+        }
+        catch (KVException e)
+        {
+            return false;
+        }
+        return true;
     }
 
     /** This method is purely for convenience and will not be tested. */
