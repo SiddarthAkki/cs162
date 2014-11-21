@@ -17,6 +17,10 @@ import kvstore.xml.KVPairType;
 import kvstore.xml.KVStoreType;
 import kvstore.xml.ObjectFactory;
 
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.io.IOException;
+
 
 /**
  * This is a basic key-value store. Ideally this would go to disk, or some other
@@ -100,7 +104,7 @@ public class KVStore implements KeyValueInterface {
         marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, false);
         marshaller.marshal(getXMLRoot(), os);
     }
-    
+
     private KVStoreType unmarshal(File f) throws JAXBException {
         JAXBContext context = JAXBContext.newInstance(ObjectFactory.class);
         Unmarshaller unmarshaller = context.createUnmarshaller();
@@ -121,7 +125,7 @@ public class KVStore implements KeyValueInterface {
         }
         return os.toString();
     }
-    
+
     @Override
     public String toString() {
         return this.toXML();
@@ -134,6 +138,13 @@ public class KVStore implements KeyValueInterface {
      * @param fileName the file to write the serialized store
      */
     public void dumpToFile(String fileName) {
+      try {
+        FileOutputStream out = new FileOutputStream(fileName);
+        out.write(this.toString().getBytes());
+        out.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
         // implement me
     }
 
@@ -146,8 +157,21 @@ public class KVStore implements KeyValueInterface {
      * @param fileName the file containing the serialized store data
      */
     public void restoreFromFile(String fileName) {
+      //unmarshalTo
+      try {
         resetStore();
+        File resetFile = new File(fileName);
 
+        KVStoreType kvStoreType = this.unmarshal(resetFile);
+        ArrayList<KVPairType> kvList = (ArrayList<KVPairType>) kvStoreType.getKVPair();
+
+        for (int i = 0; i < kvList.size(); i++) {
+          KVPairType pair = kvList.get(i);
+          this.put(pair.getKey(), pair.getValue());
+        }
+      } catch (JAXBException e) {
+          e.printStackTrace();
+      }
         // implement me
     }
 }
