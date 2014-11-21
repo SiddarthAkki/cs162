@@ -65,7 +65,8 @@ public class SocketServer {
      * @throws IOException if unable create and bind a ServerSocket
      */
     public void connect() throws IOException {
-        // implement me
+	server = new ServerSocket(port);
+	server.setSoTimeout(TIMEOUT);
     }
 
     /**
@@ -77,7 +78,13 @@ public class SocketServer {
      *         listening for or servicing requests
      */
     public void start() throws IOException {
-     // implement me
+	Socket sock;
+	while (!stopped) {
+	    try {
+		sock = server.accept();
+		handler.handle(sock);
+	    } catch (SocketTimeoutException e) {}
+	}
     }
 
     /**
