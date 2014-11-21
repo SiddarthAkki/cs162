@@ -14,6 +14,8 @@ import kvstore.xml.KVCacheType;
 import kvstore.xml.KVSetType;
 import kvstore.xml.ObjectFactory;
 
+import java.util.LinkedList;
+
 
 /**
  * A set-associate cache which has a fixed maximum number of sets (numSets).
@@ -29,8 +31,26 @@ public class KVCache implements KeyValueInterface {
      * @param numSets the number of sets this cache will have
      * @param maxElemsPerSet the size of each set
      */
+
+    private LinkedList<Container>[] sets;
+    private int maxElemsPerSet;
+    private int numSets;
+
+    private ReentrantLock[] setLocks;
+
     @SuppressWarnings("unchecked")
     public KVCache(int numSets, int maxElemsPerSet) {
+      this.numSets = numSets;
+      this.sets = (LinkedList<Container>[]) new LinkedList<?>[numSets];
+      this.setLocks = new ReentrantLock[numSets];
+
+      this.maxElemsPerSet = maxElemsPerSet;
+
+      for (int i = 0; i < sets.length; i++) {
+        this.sets[i] = new LinkedList<Container>();
+        this.setLocks[i] = new ReentrantLock();
+      }
+
         // implement me
     }
 
@@ -46,7 +66,33 @@ public class KVCache implements KeyValueInterface {
     @Override
     public String get(String key) {
         // implement me
-        return null;
+        int setVal = getSetVal(key);
+
+        LinkedList<Container> queue = this.sets[setVal];
+        String value = null;
+        Container currElem;
+        boolean found = false;
+
+        for (int i = 0; i < queue.size(); i++) {
+          currElem = queue.get(i);
+          if (currElem.key == key) {
+            value = currElem.value;
+            currElem.ref = true;
+            found = true;
+            break;
+          }
+        }
+
+        return value;
+        //return null;
+    }
+
+    private int getSetVal(String key) {
+      int hashCode = (key.hashCode() % this.numSets);
+      if (hashCode < 0) {
+        hashCode += this.numSets;
+      }
+      return hashCode;
     }
 
     /**
@@ -67,6 +113,47 @@ public class KVCache implements KeyValueInterface {
      */
     @Override
     public void put(String key, String value) {
+      int setVal = getSetVal(key);
+      LinkedList<Container> queue = this.sets[setVal];
+
+      Container elem = new Container(key, value);
+
+      boolean existing = false;
+      Container currElem;
+
+      for (int i = 0; i < queue.size(); i++) {
+        currElem = queue.get(i);
+        if (currElem.key == key) {
+          currElem.value = value;
+          currElem.ref = true;
+          existing = true;
+          break;
+        }
+      }
+
+      if (existing == false) {
+        if (queue.size() < this.maxElemsPerSet) {
+          queue.add(elem);
+        } else {
+          if (existing == false) {
+            boolean swap = false;
+            for (int i = 0; i < queue.size(); i++) {
+              currElem = queue.get(i);
+              if (currElem.ref == false) {
+                queue.remove(i);
+                queue.add(elem);
+                swap = true;
+                break;
+              }
+            }
+            if (swap == false) {
+              queue.remove(0);
+              queue.add(elem);
+            }
+          }
+        }
+      }
+      //use String.hashcode()
         // implement me
     }
 
@@ -79,7 +166,23 @@ public class KVCache implements KeyValueInterface {
      */
     @Override
     public void del(String key) {
+
+      int setVal = getSetVal(key);
+
+      LinkedList<Container> queue = this.sets[setVal];
+
+      Container currElem;
+
+      for (int i = 0; i < queue.size(); i++) {
+        currElem = queue.get(i);
+        if (currElem.key == key) {
+          queue.remove(i);
+          break;
+        }
+      }
         // implement me
+
+
     }
 
     /**
@@ -92,11 +195,15 @@ public class KVCache implements KeyValueInterface {
      */
 
     public Lock getLock(String key) {
-    	return null;
+
+      int setVal = getSetVal(key);
+      ReentrantLock setLock = this.setLocks[setVal];
+
+    	return setLock;
     	//implement me
 
     }
-    
+
     /**
      * Get the size of a given set in the cache.
      * @param cacheSet Which set.
@@ -104,7 +211,9 @@ public class KVCache implements KeyValueInterface {
      */
     int getCacheSetSize(int cacheSet) {
         // implement me
-        return -1;
+        LinkedList<Container> queue = this.sets[cacheSet];
+
+        return queue.size();
     }
 
     private void marshalTo(OutputStream os) throws JAXBException {
@@ -139,6 +248,18 @@ public class KVCache implements KeyValueInterface {
     @Override
     public String toString() {
         return this.toXML();
+    }
+
+    private static class Container {
+
+      public final String key;
+      public String value;
+      public boolean ref;
+      public Container(String key, String value) {
+        this.key = key;
+        this.value = value;
+        this.ref = false;
+      }
     }
 
 }
