@@ -143,7 +143,7 @@ public class KVStore implements KeyValueInterface {
         out.write(this.toString().getBytes());
         out.close();
       } catch (IOException e) {
-        e.printStackTrace();
+        //e.printStackTrace();
       }
         // implement me
     }
@@ -170,7 +170,7 @@ public class KVStore implements KeyValueInterface {
           this.put(pair.getKey(), pair.getValue());
         }
       } catch (JAXBException e) {
-          e.printStackTrace();
+          //e.printStackTrace();
       }
         // implement me
     }
