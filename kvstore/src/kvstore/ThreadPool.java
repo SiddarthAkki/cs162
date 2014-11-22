@@ -39,7 +39,7 @@ public class ThreadPool {
      * @throws InterruptedException if thread is interrupted while in blocked
      *         state. Your implementation may or may not actually throw this.
      */
-    public void addJob(Runnable r) throws InterruptedException {
+    public void addJob(Runnable r) {
 	jobLock.lock();
 	jobQueue.add(r);
 	condVar.signal();
