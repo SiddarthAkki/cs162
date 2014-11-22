@@ -67,6 +67,9 @@ public class SocketServer {
     public void connect() throws IOException {
 	server = new ServerSocket(port);
 	server.setSoTimeout(TIMEOUT);
+	if (port == 0) {
+	    port = server.getLocalPort();
+	}
     }
 
     /**
@@ -85,6 +88,7 @@ public class SocketServer {
 		handler.handle(sock);
 	    } catch (SocketTimeoutException e) {}
 	}
+	server.close();
     }
 
     /**

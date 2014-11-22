@@ -1,14 +1,19 @@
 package kvstore;
-import java.util.*;
-import java.util.concurrent.locks.*;
+
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
+import java.util.Queue;
+import java.util.LinkedList;
 
 public class ThreadPool {
 
     /* Array of threads in the threadpool */
     public Thread threads[];
-    public Queue<Runnable> jobQueue; //added
-    public ReentrantLock queueLock =  new ReentrantLock(); //added
-    public Condition notEmpty  = queueLock.newCondition();
+    private Lock jobLock;
+    private Condition condVar;
+    private Queue<Runnable> jobQueue;
+
     /**
      * Constructs a Threadpool with a certain number of threads.
      *
@@ -16,15 +21,13 @@ public class ThreadPool {
      */
     public ThreadPool(int size) {
         threads = new Thread[size];
-        
-        // implement me
-        jobQueue = new LinkedList<Runnable>();
-        for (int i = 0; i < threads.length; i++)
-        {
-            threads[i] = new WorkerThread(this);
-            threads[i].start();
-        }
-        
+	jobLock = new ReentrantLock();
+	condVar = jobLock.newCondition();
+	jobQueue = new LinkedList<Runnable>();
+	for (int i = 0; i < size; i++) {
+	    threads[i] = this.new WorkerThread(this);
+	    threads[i].start();
+	}
     }
 
     /**
@@ -37,11 +40,10 @@ public class ThreadPool {
      *         state. Your implementation may or may not actually throw this.
      */
     public void addJob(Runnable r) throws InterruptedException {
-        // implement me
-        queueLock.lock();
-        jobQueue.add(r);
-        notEmpty.signal();
-        queueLock.unlock();
+	jobLock.lock();
+	jobQueue.add(r);
+	condVar.signal();
+	jobLock.unlock();
     }
 
     /**
@@ -51,31 +53,13 @@ public class ThreadPool {
      *         state. Your implementation may or may not actually throw this.
      */
     public Runnable getJob() throws InterruptedException {
-        // implement me
-        /*
-        while (true)
-        {
-            //busy wait
-            //need to add synchronization
-            //this.wait();
-            synchronized (this) {
-                
-                if (!jobQueue.isEmpty())
-                {
-                    return jobQueue.remove();
-                }
-            }
-            
-        }
-         */
-        queueLock.lock();
-        while (jobQueue.isEmpty())
-        {
-            notEmpty.await();
-        }
-        Runnable removed = jobQueue.remove();
-        queueLock.unlock();
-        return removed;
+	jobLock.lock();
+	while (jobQueue.isEmpty()) {
+	    condVar.await();
+	}
+	Runnable run = jobQueue.remove();
+	jobLock.unlock();
+	return run;
     }
 
     /**
@@ -99,19 +83,11 @@ public class ThreadPool {
          */
         @Override
         public void run() {
-            // implement me
-            while (true)
-            {
-                //System.out.println("running");
-                try
-                {
-                    threadPool.getJob().run();
-                }
-                catch (InterruptedException e)
-                {
-                    //do something I guess?
-                }
-            }
+	    while (true) {
+		try {
+		    threadPool.getJob().run();
+		} catch (InterruptedException e) {}
+	    }
         }
     }
 }
