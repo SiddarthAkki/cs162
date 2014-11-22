@@ -35,7 +35,8 @@ public class ServerClientHandler implements NetworkHandler {
      * @param connections number of threads in threadPool to service requests
      */
     public ServerClientHandler(KVServer kvServer, int connections) {
-        // implement me
+        this.kvServer = kvServer;
+        threadPool = new ThreadPool(connections);
     }
 
     /**
@@ -46,9 +47,42 @@ public class ServerClientHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket client) {
-        // implement me
+        KVMessage message;
+        try {
+            message = new KVMessage(client);
+        } catch (KVException e) {
+            message = new KVMessage(RESP, e.getKVMessage());
+            try {
+                message.send(client);
+                if (!client.isClosed()) {
+                    client.close();
+                }
+                return;              
+            } catch (KVException e) {
+                if (!client.isClosed()) {
+                    client.close();
+                }
+                return;
+            }
+ 
+        }
+        String messType = mess.getMsgType();
+        String key = mess.getKey();
     }
     
-    // implement me
+    private static class RequestThread extends Thread {
+        private String key;
+        private String value;
+        private String reqName;
+
+        RequestThread(String key, String value, String reqName) {
+            this.key = key;
+            this.value = value;
+            this.reqName = reqName;
+
+        }
+
+        public 
+    }
 
 }
