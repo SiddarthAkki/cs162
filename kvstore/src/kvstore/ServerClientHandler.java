@@ -69,7 +69,7 @@ public class ServerClientHandler implements NetworkHandler {
 	
     }
     
-    private static class RequestThread extends Thread {
+    private static class RequestThread implements Runnable {
         private String key;
         private String value;
         private String reqName;

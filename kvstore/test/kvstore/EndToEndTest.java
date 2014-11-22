@@ -20,4 +20,61 @@ import autograder.AGCategories.AG_PROJ3_CODE;
 
 public class EndToEndTest extends EndToEndTemplate {
 
+    @Test(timeout = kTimeoutQuick)
+    @Category(AG_PROJ3_CODE.class)
+    public void testPutandGet() {
+	try {
+	    client.put("sup", "dawg");
+	} catch (KVException e) {
+	    fail("should not have raised exception");
+	}
+	String val = null;
+	try {
+	    val = client.get("sup");
+	} catch (KVException e) {
+	    fail("should not have raised exception");
+	}
+	assertNotNull(val);
+	assertTrue(val.equals("dawg"));
+    }
+
+    @Test(timeout = kTimeoutQuick)
+    @Category(AG_PROJ3_CODE.class)
+    public void testDel() {
+	try {
+	    client.put("Anu", "EXTREME!!!!");
+	} catch (KVException e) {
+	    fail("should not have raised exception");
+	}
+	try {
+	    client.del("Anu");
+	} catch (KVException e) {
+	    fail("should not have raised exception");
+	}
+	try {
+	    client.get("Anu");
+	    fail("Key should have been deleted");
+	} catch (KVException e) {
+	    assertTrue(ERROR_NO_SUCH_KEY.equals(e.getKVMessage().getMessage()));
+	}
+    }
+	
+
+    @Test(timeout = kTimeoutQuick)
+    @Category(AG_PROJ3_CODE.class)
+    public void testErrors() {
+	try {
+	    client.get("ANUISSOEXTREME!!!");
+	    fail("invalid key");
+	} catch (KVException e) {
+	    assertTrue(ERROR_NO_SUCH_KEY.equals(e.getKVMessage().getMessage()));
+	}
+	try {
+	    client.del("PEANUTBUTTERBANANAS");
+	    fail("invalid key");
+	} catch (KVException e) {
+	    assertTrue(ERROR_NO_SUCH_KEY.equals(e.getKVMessage().getMessage()));
+	}
+    }
+
 }
