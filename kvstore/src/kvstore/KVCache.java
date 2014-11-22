@@ -15,6 +15,7 @@ import kvstore.xml.KVSetType;
 import kvstore.xml.ObjectFactory;
 
 import java.util.LinkedList;
+import java.util.ArrayList;
 
 
 /**
@@ -229,6 +230,30 @@ public class KVCache implements KeyValueInterface {
         ObjectFactory factory = new ObjectFactory();
         KVCacheType xmlCache = factory.createKVCacheType();
             // implement me
+        ArrayList<KVSetType> xmlSets = (ArrayList<KVSetType>) xmlCache.getSet();
+        KVSetType kvSet;
+        ArrayList<KVCacheEntry> cacheEntries;
+        KVCacheEntry cacheEntry;
+
+        LinkedList<Container> currSet;
+        Container currCont;
+        for (int i = 0; i < this.sets.length; i++) {
+          kvSet = factory.createKVSetType();
+          cacheEntries = (ArrayList<KVCacheEntry>) kvSet.getCacheEntry();
+
+          currSet = this.sets[i];
+
+          for (int j = 0; j < currSet.size(); j++) {
+            currCont = currSet.get(j);
+            cacheEntry = factory.createKVCacheEntry();
+            cacheEntry.setKey(currCont.key);
+            cacheEntry.setValue(currCont.value);
+            cacheEntry.setIsReferenced(String.valueOf(currCont.ref));
+            cacheEntries.add(cacheEntry);
+          }
+          xmlSets.add(kvSet);
+        }
+
         return factory.createKVCache(xmlCache);
     }
 
