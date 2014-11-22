@@ -62,6 +62,14 @@ public class KVClient implements KeyValueInterface {
 	} catch (IOException e) {}
     }
 
+
+    private boolean is_valid(String val) {
+      if ((val == null) || (val.isEmpty())) {
+        return false;
+      } else {
+        return true;
+      }
+    }
     /**
      * Issues a PUT request to the server.
      *
@@ -70,15 +78,22 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public void put(String key, String value) throws KVException {
-	KVMessage putRequest = new KVMessage(PUT_REQ);
-	putRequest.setKey(key);
-	putRequest.setValue(value);
-	Socket sock = connectHost();
-	putRequest.sendMessage(sock);
-	KVMessage receive = new KVMessage(sock);
-	if (!receive.getMessage().equals(SUCCESS)) {
-	    throw new KVException(ERROR_INVALID_VALUE);
-	}
+      if (this.is_valid(key) == false) {
+        throw new KVException(ERROR_INVALID_KEY);
+      }
+      if (this.is_valid(value) == false) {
+        throw new KVException(ERROR_INVALID_VALUE);
+      }
+
+	    KVMessage putRequest = new KVMessage(PUT_REQ);
+	    putRequest.setKey(key);
+	    putRequest.setValue(value);
+	    Socket sock = connectHost();
+	    putRequest.sendMessage(sock);
+	    KVMessage receive = new KVMessage(sock);
+	    if (!receive.getMessage().equals(SUCCESS)) {
+	       throw new KVException(receive.getMessage());
+	    }
     }
 
     /**
@@ -90,15 +105,19 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public String get(String key) throws KVException {
-	KVMessage getRequest = new KVMessage(GET_REQ);
-	getRequest.setKey(key);
-	Socket sock = connectHost();
-	getRequest.sendMessage(sock);
-	KVMessage response = new KVMessage(sock);
-	if (response.getKey() == null) {
-	    throw new KVException(ERROR_NO_SUCH_KEY);
-	}
-	return response.getValue();
+      if (this.is_valid(key) == false) {
+        throw new KVException(ERROR_INVALID_KEY);
+      }
+
+	    KVMessage getRequest = new KVMessage(GET_REQ);
+	    getRequest.setKey(key);
+	    Socket sock = connectHost();
+	    getRequest.sendMessage(sock);
+	    KVMessage response = new KVMessage(sock);
+	    if (response.getKey() == null) {
+	       throw new KVException(ERROR_NO_SUCH_KEY);
+	    }
+	    return response.getValue();
     }
 
     /**
@@ -109,14 +128,18 @@ public class KVClient implements KeyValueInterface {
      */
     @Override
     public void del(String key) throws KVException {
-	KVMessage delRequest = new KVMessage(DEL_REQ);
-	delRequest.setKey(key);
-	Socket sock = connectHost();
-	delRequest.sendMessage(sock);
-	KVMessage response = new KVMessage(sock);
-	if (!response.getMessage().equals(SUCCESS)) {
-	    throw new KVException(ERROR_NO_SUCH_KEY);
-	}
+      if (this.is_valid(key) == false) {
+        throw new KVException(ERROR_INVALID_KEY);
+      }
+
+	    KVMessage delRequest = new KVMessage(DEL_REQ);
+	    delRequest.setKey(key);
+	    Socket sock = connectHost();
+	    delRequest.sendMessage(sock);
+	    KVMessage response = new KVMessage(sock);
+	    if (!response.getMessage().equals(SUCCESS)) {
+	       throw new KVException(ERROR_NO_SUCH_KEY);
+	    }
     }
 
 
