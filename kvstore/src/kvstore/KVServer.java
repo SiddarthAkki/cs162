@@ -2,6 +2,7 @@ package kvstore;
 
 import static kvstore.KVConstants.ERROR_OVERSIZED_KEY;
 import static kvstore.KVConstants.ERROR_OVERSIZED_VALUE;
+import static kvstore.KVConstants.ERROR_NO_SUCH_KEY;
 import static kvstore.KVConstants.RESP;
 
 import java.util.concurrent.locks.Lock;
@@ -41,7 +42,6 @@ public class KVServer implements KeyValueInterface {
      */
     @Override
     public void put(String key, String value) throws KVException {
-        // implement me
         if (key.length() > MAX_KEY_SIZE)
         {
             throw new KVException(ERROR_OVERSIZED_KEY);
@@ -55,8 +55,8 @@ public class KVServer implements KeyValueInterface {
         Lock setLock = this.dataCache.getLock(key);
         setLock.lock();
         this.dataCache.put(key, value);
-        setLock.unlock();
         this.dataStore.put(key, value);
+        setLock.unlock();
     }
 
     /**
@@ -69,30 +69,27 @@ public class KVServer implements KeyValueInterface {
      */
     @Override
     public String get(String key) throws KVException {
-        // implement me
         Lock setLock = this.dataCache.getLock(key);
         setLock.lock();
         
         String value = this.dataCache.get(key);
-        setLock.unlock();
         if ( value != null)
         {
-            //cache has key
+            setLock.unlock();
             return value;
         }
         else
         {
-            //look in store, which will throw exception if key does not exist in store
-            value = this.dataStore.get(key);
-            
-            //no exception thrown
-            setLock.lock();
+            try {
+                value = this.dataStore.get(key);
+            } catch (KVException e) {
+                setLock.unlock();
+                throw e;
+            }
             this.dataCache.put(key, value);
             setLock.unlock();
             return value;
         }
-        
-        //return null;
     }
 
     /**
@@ -103,15 +100,16 @@ public class KVServer implements KeyValueInterface {
      */
     @Override
     public void del(String key) throws KVException {
-        // implement me
         Lock setLock = this.dataCache.getLock(key);
         setLock.lock();
         this.dataCache.del(key);
-        setLock.unlock();
-        
-        //store may throw exception
-        this.dataStore.del(key);
-        
+        try {
+            this.dataStore.del(key);
+            setLock.unlock();
+        } catch (KVException e) {
+            setLock.unlock();
+            throw e;
+        }       
     }
 
     /**
@@ -123,7 +121,6 @@ public class KVServer implements KeyValueInterface {
      * @param key key to check for membership in store
      */
     public boolean hasKey(String key) {
-        // implement me
         try
         {
             this.dataStore.get(key);
