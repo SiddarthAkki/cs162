@@ -30,7 +30,8 @@ public class TPCClientHandler implements NetworkHandler {
      * @param connections number of threads in threadPool to service requests
      */
     public TPCClientHandler(TPCMaster tpcMaster, int connections) {
-        // implement me
+	this.tpcMaster = tpcMaster;
+	this.threadPool = new ThreadPool(connections);
     }
 
     /**
@@ -41,9 +42,59 @@ public class TPCClientHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket client) {
-        // implement me
+	KVMessage request = null;
+	try {
+	    message = new KVMEssage(client);
+	} catch (KVException e) {
+	    message = new KVMessage(RESP, e.getKVMessage().getMessage());
+	    try {
+		message.sendMessage(client);
+	    } catch (KVException f) {}
+	    try {
+		client.close();
+	    } catch (IOException g) {}
+	    return;
+	}
+
+	threadPool.addJob(this.new TPCRequestRunnable(request, client));
     }
     
-    // implement me
+    private class TPCRequestRunnable implements Runnable {
+	private KVMessage request;
+	private Socket client;
+
+	TPCRequestRunnable(KVMessage request, Socket client) {
+	    this.request = request;
+	    this.client = client;
+	}
+
+	@Override
+	public void run() {
+	    String reqName = request.getMsgType();
+	    KVMessage response = null;
+	    try {
+		if (reqName.equals(DEL_REQ)) {
+		    tpcMaster.handleTPCRequest(request, false);
+		    response = new KVMessage(RESP, SUCCESS);
+		} else if (reqName.equals(PUT_REQ)) {
+		    tpcMaster.handleTPCRequest(request, true);
+		    response = new KVMessage(RESP, SUCCESS);
+		} else if (reqName.equals(GET_REQ)) {
+		    String val = tpcMaster.handleGet(request);
+		    response = new KVMessage(RESP);
+		    response.setKey(request.getKey());
+		    response.setValue(val);
+		}
+	    } catch (KVException e) {
+		response = new KVMessage(RESP, e.getKVMessage().getMessage());
+	    }
+	    try {
+		response.sendMessage(client);
+	    } catch (KVException e) {}
+	    try {
+		client.close();
+	    } catch (IOException e) {}
+	}
+    }
 
 }

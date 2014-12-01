@@ -10,6 +10,7 @@ public class TPCMaster {
 
     public int numSlaves;
     public KVCache masterCache;
+    public TreeMap<long, TPCSlaveInfo> slaves;
 
     public static final int TIMEOUT = 3000;
 
@@ -22,7 +23,19 @@ public class TPCMaster {
     public TPCMaster(int numSlaves, KVCache cache) {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
-        // implement me
+	this.slaves = new TreeMap<long, TPCSlaveInfo>(new Comparator<long>() {
+		int compare(long first, long second) {
+		    boolean comp1 = TPCMaster.isLessThanUnsigned(first, second);
+		    boolean comp2 = TPCMaster.isLessThanEqualUnsigned(first, second);
+		    if (comp1) {
+			return 1;
+		    } else if (comp2) {
+			return 0;
+		    } else {
+			return -1;
+		    }
+		}
+	    });
     }
 
     /**
@@ -33,7 +46,7 @@ public class TPCMaster {
      * @param slave the slaveInfo to be registered
      */
     public void registerSlave(TPCSlaveInfo slave) {
-        // implement me
+	this.slaves.put(slave.getSlaveID(), slave);
     }
 
     /**
@@ -83,8 +96,12 @@ public class TPCMaster {
      * @return SlaveInfo of first replica
      */
     public TPCSlaveInfo findFirstReplica(String key) {
-        // implement me
-        return null;
+	long keyhash = TPCMaster.hashTo64bit(key);
+	long replicaKey = this.slaves.higherKey(keyhash);
+	if (replicaKey == null) {
+	    replicaKey = this.slaves.firstKey();
+	}
+	return this.slaves.get(replicaKey);
     }
 
     /**
@@ -94,16 +111,18 @@ public class TPCMaster {
      * @return SlaveInfo of successor replica
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
-        // implement me
-        return null;
+	long nextKey = this.slaves.higherKey(firstReplica.getSlaveID);
+	if (nextKey == null) {
+	    nextKey = this.slaves.firstKey();
+	}
+	return this.slaves.get(nextKey);
     }
 
     /**
      * @return The number of slaves currently registered.
      */
     public int getNumRegisteredSlaves() {
-        // implement me
-        return -1;
+	return this.slaves.size();
     }
 
     /**
@@ -111,8 +130,7 @@ public class TPCMaster {
      * @return The requested TPCSlaveInfo if present, otherwise null.
      */
     public TPCSlaveInfo getSlave(long slaveId) {
-        // implement me
-        return null;
+	return this.slaves.get(slaveId);
     }
 
     /**
