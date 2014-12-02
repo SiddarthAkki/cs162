@@ -43,8 +43,9 @@ public class TPCClientHandler implements NetworkHandler {
     @Override
     public void handle(Socket client) {
 	KVMessage request = null;
+	KVMessage message;
 	try {
-	    message = new KVMEssage(client);
+	    message = new KVMessage(client);
 	} catch (KVException e) {
 	    message = new KVMessage(RESP, e.getKVMessage().getMessage());
 	    try {

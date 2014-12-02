@@ -10,7 +10,7 @@ public class TPCMaster {
 
     public int numSlaves;
     public KVCache masterCache;
-    public TreeMap<long, TPCSlaveInfo> slaves;
+    public TreeMap<Long, TPCSlaveInfo> slaves;
 
     public static final int TIMEOUT = 3000;
 
@@ -23,8 +23,9 @@ public class TPCMaster {
     public TPCMaster(int numSlaves, KVCache cache) {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
-	this.slaves = new TreeMap<long, TPCSlaveInfo>(new Comparator<long>() {
-		int compare(long first, long second) {
+	this.slaves = new TreeMap<Long, TPCSlaveInfo>(new Comparator<Long>() {
+        
+		public int compare(Long first, Long second) {
 		    boolean comp1 = TPCMaster.isLessThanUnsigned(first, second);
 		    boolean comp2 = TPCMaster.isLessThanEqualUnsigned(first, second);
 		    if (comp1) {
@@ -97,7 +98,7 @@ public class TPCMaster {
      */
     public TPCSlaveInfo findFirstReplica(String key) {
 	long keyhash = TPCMaster.hashTo64bit(key);
-	long replicaKey = this.slaves.higherKey(keyhash);
+	Long replicaKey = this.slaves.higherKey(keyhash);
 	if (replicaKey == null) {
 	    replicaKey = this.slaves.firstKey();
 	}
@@ -111,7 +112,7 @@ public class TPCMaster {
      * @return SlaveInfo of successor replica
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
-	long nextKey = this.slaves.higherKey(firstReplica.getSlaveID);
+	Long nextKey = this.slaves.higherKey(firstReplica.getSlaveID());
 	if (nextKey == null) {
 	    nextKey = this.slaves.firstKey();
 	}

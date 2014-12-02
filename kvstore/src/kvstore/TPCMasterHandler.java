@@ -2,6 +2,9 @@ package kvstore;
 
 import static kvstore.KVConstants.*;
 
+import java.io.IOException;
+
+
 import java.net.Socket;
 /**
  * Implements NetworkHandler to handle 2PC operation requests from the Master/
@@ -62,7 +65,7 @@ public class TPCMasterHandler implements NetworkHandler {
 	try {
 	    master = new Socket(masterHostname, 9090);
 	    listener = new Socket(server.getHostname(), server.getPort());
-	} catch (UnknownHostException | IOException e) {
+	} catch (IOException e) {
 	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
 	}
 	String repr = "";
