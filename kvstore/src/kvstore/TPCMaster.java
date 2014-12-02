@@ -5,6 +5,7 @@ import static kvstore.KVConstants.*;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TPCMaster {
 
@@ -13,6 +14,10 @@ public class TPCMaster {
     public TreeMap<Long, TPCSlaveInfo> slaves;
 
     public static final int TIMEOUT = 3000;
+
+    private ReentrantLock slaveLock;
+
+
 
     /**
      * Creates TPCMaster, expecting numSlaves slave servers to eventually register
@@ -23,17 +28,17 @@ public class TPCMaster {
     public TPCMaster(int numSlaves, KVCache cache) {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
+        this.slaveLock = new ReentrantLock();
 	this.slaves = new TreeMap<Long, TPCSlaveInfo>(new Comparator<Long>() {
-        
 		public int compare(Long first, Long second) {
 		    boolean comp1 = TPCMaster.isLessThanUnsigned(first, second);
 		    boolean comp2 = TPCMaster.isLessThanEqualUnsigned(first, second);
 		    if (comp1) {
-			return 1;
+			return -1;
 		    } else if (comp2) {
 			return 0;
 		    } else {
-			return -1;
+			return 1;
 		    }
 		}
 	    });
@@ -47,7 +52,12 @@ public class TPCMaster {
      * @param slave the slaveInfo to be registered
      */
     public void registerSlave(TPCSlaveInfo slave) {
-	this.slaves.put(slave.getSlaveID(), slave);
+        slaveLock.lock();
+        if (this.slaves.containsKey() || this.slaves.size() < this.numSlaves) {
+	       this.slaves.put(slave.getSlaveID(), slave);
+        }
+        slaveLock.unlock();
+
     }
 
     /**
