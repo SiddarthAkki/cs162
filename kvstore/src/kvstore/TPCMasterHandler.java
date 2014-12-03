@@ -70,7 +70,7 @@ public class TPCMasterHandler implements NetworkHandler {
 	}
 	String repr = "";
 	repr += this.slaveID + "@" + server.getHostname() + ":" + server.getPort();
-	KVMessage message = new KVMessage(READY, repr);
+	KVMessage message = new KVMessage(REGISTER, repr);
 	message.sendMessage(master);
 	KVMessage response = new KVMessage(listener);
 	String masterResponse = response.getMessage();
@@ -86,5 +86,70 @@ public class TPCMasterHandler implements NetworkHandler {
     @Override
     public void handle(Socket master) {
         // implement me
+        KVMessage message;
+        try {
+            message = new KVMessage(master);
+        } catch (KVException e) {
+            message = new KVMessage(RESP, e.getKVMessage().getMessage());
+            try {
+                message.sendMessage(master);
+            } catch (KVException f) {}
+            try {
+                master.close();
+            } catch (IOException g) {}
+            return;
+        }
+        String messType = message.getMsgType();
+        String key = message.getKey();
+        String val = message.getValue();
+        threadpool.addJob(new RequestThread(key, val, messType, master, kvServer));
+
+    }
+
+    private static class RequestThread implements Runnable {
+        private String key;
+        private String value;
+        private String reqName;
+        private Socket master;
+        private KVServer server;
+
+        RequestThread(String key, String value, String reqName, Socket master, KVServer server) {
+            this.key = key;
+            this.value = value;
+            this.reqName = reqName;
+            this.master = master;
+            this.server = server;
+        }
+
+        @Override
+        public void run() {
+        KVMessage message = null;
+        try {
+            //Not TPC Del
+            if (reqName.equals(DEL_REQ)) {
+                server.del(key);
+                message = new KVMessage(RESP, SUCCESS);
+            } else if (reqName.equals(GET_REQ)) {
+                String keyval = server.get(key);
+                message = new KVMessage(RESP);
+                message.setKey(key);
+                message.setValue(keyval);
+            //Not TPC Put
+            } else if (reqName.equals(PUT_REQ)) {
+                server.put(key, value);
+                message = new KVMessage(RESP, SUCCESS);
+            }
+        } catch (KVException e) {
+            message = new KVMessage(RESP, e.getKVMessage().getMessage());
+        }
+        try {
+            message.sendMessage(master);
+        } catch (KVException e) {}
+            if (!master.isClosed()) {
+            try {
+                master.close();
+            } catch (IOException e) {}
+        }
+    }
     }
 }

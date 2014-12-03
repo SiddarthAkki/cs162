@@ -53,7 +53,7 @@ public class TPCMaster {
      */
     public void registerSlave(TPCSlaveInfo slave) {
         slaveLock.lock();
-        if (this.slaves.containsKey() || this.slaves.size() < this.numSlaves) {
+        if (this.slaves.containsKey(slave.getSlaveID()) || this.slaves.size() < this.numSlaves) {
 	       this.slaves.put(slave.getSlaveID(), slave);
         }
         slaveLock.unlock();
