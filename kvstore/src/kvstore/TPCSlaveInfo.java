@@ -22,7 +22,15 @@ public class TPCSlaveInfo {
      * @throws KVException ERROR_INVALID_FORMAT if info string is invalid
      */
     public TPCSlaveInfo(String info) throws KVException {
-        // implement me
+        String[] params = info.split("@");
+        try {
+            this.slaveID = Long.parseLong(params[0]);
+            String[] nestedParams = params[1].split(":");
+            this.hostname = nestedParams[0];
+            this.port = Integer.parseInt(nestedParams[1]);
+        } catch (NumberFormatException e) {
+            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+        }
     }
 
     public long getSlaveID() {
