@@ -198,9 +198,7 @@ public class TPCMaster {
                 return value;
               }
             } catch(Exception e) {
-              //don't care
             }
-
             TPCSlaveInfo secondRep = findSuccessor(firstRep);
             try {
               recvMsg = contactSlave(secondRep, key);
@@ -222,15 +220,11 @@ public class TPCMaster {
 
     private KVMessage contactSlave(TPCSlaveInfo slave, String key) throws KVException {
       KVMessage recvMsg;
-      try {
-        Socket slaveSock = slave.connectHost(TIMEOUT);
-        KVMessage msg = new KVMessage(GET_REQ);
-        msg.setKey(key);
-        msg.sendMessage(slaveSock);
-        recvMsg = new KVMessage(slaveSock);
-      } catch (KVException e) {
-        throw e;
-      }
+      Socket slaveSock = slave.connectHost(TIMEOUT);
+      KVMessage msg = new KVMessage(GET_REQ);
+      msg.setKey(key);
+      msg.sendMessage(slaveSock);
+      recvMsg = new KVMessage(slaveSock, TIMEOUT);
       return recvMsg;
     }
 
