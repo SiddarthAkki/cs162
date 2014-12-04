@@ -43,8 +43,45 @@ public class TPCRegistrationHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket slave) {
-        // implement me
+        KVMessage message;
+        try {
+            message = new KVMessage(slave);
+        } catch (KVException e) {
+            message = new KVMessage(RESP, e.getKVMessage().getMessage());
+            try {
+                message.sendMessage(slave);
+            } catch (KVException f) {}
+            try {
+                slave.close();
+            } catch (IOException g) {}
+            return;
+        }
+
+    threadpool.addJob(this.new TPCRequestRunnable(message, slave));
     }
     
-    // implement me
+    private class TPCRequestRunnable implements Runnable {
+        private KVMessage request;
+        private Socket slave;
+
+        TPCRequestRunnable(KVMessage request, Socket slave) {
+            this.request = request;
+            this.slave = slave;
+        }
+
+        @Override
+        public void run() {
+            KVMessage response = null;
+            try{
+                String infoString = request.getMessage();
+                TPCSlaveInfo info = new TPCSlaveInfo(infoString);
+                master.registerSlave(info);
+                response = new KVMessage(RESP, "Successfully registered " + infoString);
+                response.sendMessage(slave);
+            } catch (KVException e) {}
+            try {
+                slave.close();
+            } catch (IOException e) {}
+        }
+    }
 }

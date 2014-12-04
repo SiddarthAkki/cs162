@@ -42,8 +42,7 @@ public class TPCClientHandler implements NetworkHandler {
      */
     @Override
     public void handle(Socket client) {
-	KVMessage request = null;
-	KVMessage message;
+		KVMessage message;
 	try {
 	    message = new KVMessage(client);
 	} catch (KVException e) {
@@ -57,8 +56,7 @@ public class TPCClientHandler implements NetworkHandler {
 	    return;
 	}
 
-	//Why do we never use message and pass in request which is null.
-	threadPool.addJob(this.new TPCRequestRunnable(request, client));
+	threadPool.addJob(this.new TPCRequestRunnable(message, client));
     }
     
     private class TPCRequestRunnable implements Runnable {
