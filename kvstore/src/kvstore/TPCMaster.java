@@ -225,6 +225,7 @@ public class TPCMaster {
       msg.setKey(key);
       msg.sendMessage(slaveSock);
       recvMsg = new KVMessage(slaveSock, TIMEOUT);
+      slave.closeHost(slaveSock);
       return recvMsg;
     }
 
