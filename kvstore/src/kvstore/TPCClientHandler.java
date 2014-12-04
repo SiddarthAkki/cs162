@@ -57,6 +57,7 @@ public class TPCClientHandler implements NetworkHandler {
 	    return;
 	}
 
+	//Why do we never use message and pass in request which is null.
 	threadPool.addJob(this.new TPCRequestRunnable(request, client));
     }
     
