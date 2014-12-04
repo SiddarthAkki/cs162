@@ -53,8 +53,15 @@ public class TPCSlaveInfo {
      *         or ERROR_COULD_NOT_CONNECT
      */
     public Socket connectHost(int timeout) throws KVException {
-        // implement me
-        return null;
+        try {
+            Socket sock = new Socket(this.hostname, this.port);
+            sock.setSoTimeout(timeout);
+            return sock;
+        } catch (UnknownHostException | SecurityException | IllegalArgumentException e ) {
+            throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+        } catch (IOException e) {
+            throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+        }
     }
 
     /**
@@ -64,6 +71,8 @@ public class TPCSlaveInfo {
      * @param sock Socket to be closed
      */
     public void closeHost(Socket sock) {
-        // implement me
+        try {
+            sock.close();
+        } catch (IOException e) {}
     }
 }
