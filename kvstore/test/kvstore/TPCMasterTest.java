@@ -167,6 +167,24 @@ public class TPCMasterTest {
 	        fail("This shouldn't fail");
 	    }
 	}
-	
+
+	@Test
+	public void testFirstSlaveMissHandleGet() {
+		try {
+			masterCache = new KVCache(5, 5);
+			// masterCache = mock(KVCache.class);
+			master = new TPCMaster(2, masterCache);
+			slave1 = mock(TPCSlaveInfo.class);
+			slave2 = mock(TPCSlaveInfo.class);
+
+			masterCache.put("hello", "world");
+			KVMessage msg = new KVMessage(GET_REQ);
+			msg.setKey("hello");
+			assertEquals(master.handleGet(msg), "world");
+		} catch (Exception e) {
+				e.printStackTrace();
+				fail("This shouldn't fail");
+		}
+	}
 
 }
