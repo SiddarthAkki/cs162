@@ -176,7 +176,57 @@ public class TPCMaster {
      */
     public String handleGet(KVMessage msg) throws KVException {
         // implement me
-        return null;
+        //when getting a key from a given set it should be serial requests
+        //when getting a key from different sets it should be concurrent requests
+        String key = msg.getKey();
+        Lock masterLock = masterCache.getLock(key);
+        masterLock.lock();
+        String value = this.masterCache.get(key);
+        if ( value != null)
+        {
+            masterLock.unlock();
+            return value;
+        } else {
+            TPCSlaveInfo firstRep = findFirstReplica(key);
+            KVMessage recvMsg;
+            try {
+              recvMsg = contactSlave(firstRep, key);
+              value = recvMsg.getValue();
+              if (value != null) {
+                this.masterCache.put(key, value);
+                masterLock.unlock();
+                return value;
+              }
+            } catch(Exception e) {
+            }
+            TPCSlaveInfo secondRep = findSuccessor(firstRep);
+            try {
+              recvMsg = contactSlave(secondRep, key);
+              value = recvMsg.getValue();
+              if (value != null) {
+                this.masterCache.put(key, value);
+                masterLock.unlock();
+                return value;
+              } else {
+                masterLock.unlock();
+                throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
+              }
+            } catch(Exception e) {
+              masterLock.unlock();
+              throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
+            }
+        }
+    }
+
+    private KVMessage contactSlave(TPCSlaveInfo slave, String key) throws KVException {
+      KVMessage recvMsg;
+      Socket slaveSock = slave.connectHost(TIMEOUT);
+      KVMessage msg = new KVMessage(GET_REQ);
+      msg.setKey(key);
+      msg.sendMessage(slaveSock);
+      recvMsg = new KVMessage(slaveSock, TIMEOUT);
+      slave.closeHost(slaveSock);
+      return recvMsg;
     }
 
 }
