@@ -186,5 +186,53 @@ public class TPCMasterTest {
 				fail("This shouldn't fail");
 		}
 	}
+    
+    @Test
+	public void testInvalidRegMsg() {
+		try {
+			slave1 = new TPCSlaveInfo(SLAVE1 + "@111..111.111.111:1");
+            fail("TPCSlaveInfo did not throw a KVException!");
+		} catch (KVException kve) {
+            String errMsg = kve.getKVMessage().getMessage();
+            assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
+		}
+        
+        try {
+			slave1 = new TPCSlaveInfo(SLAVE1 + "@111.111.111.111-.-:1");
+            fail("TPCSlaveInfo did not throw a KVException!");
+		} catch (KVException kve) {
+            String errMsg = kve.getKVMessage().getMessage();
+            assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
+		}
+        
+        try {
+			slave1 = new TPCSlaveInfo(SLAVE1 + "@hello:world:55000");
+            fail("TPCSlaveInfo did not throw a KVException!");
+		} catch (KVException kve) {
+            String errMsg = kve.getKVMessage().getMessage();
+            assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
+		}
+        
+        try {
+			slave1 = new TPCSlaveInfo(SLAVE1 + "@google.c   om:55000");
+            fail("TPCSlaveInfo did not throw a KVException!");
+		} catch (KVException kve) {
+            String errMsg = kve.getKVMessage().getMessage();
+            assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
+		}
+        
+	}
 
 }
+
+
+
+
+
+
+
+
+
+
+
+

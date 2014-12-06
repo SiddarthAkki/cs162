@@ -27,6 +27,47 @@ public class TPCSlaveInfo {
             this.slaveID = Long.parseLong(params[0]);
             String[] nestedParams = params[1].split(":");
             this.hostname = nestedParams[0];
+            String hostnameLower = this.hostname.toLowerCase();
+            //hostname labels may contain only the ASCII letters 'a' through 'z' (in a case-insensitive manner), the digits '0' through '9', the hyphen ('-'), and dots. Consecutive hyphens and dots aren't valid.
+            boolean seenPunc = false;
+            for (int i = 0; i < hostnameLower.length(); i++)
+            {
+                //first char must be 0-9 or a-z (case-insensitive)
+                if (i == 0)
+                {
+                    if ( (hostnameLower.charAt(i) >= 'a' && hostnameLower.charAt(i) <= 'z') || (hostnameLower.charAt(i) >= '0' && hostnameLower.charAt(i) <= '9'))
+                    {
+                        
+                    }
+                    else
+                    {
+                        throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+                    }
+                }
+                else
+                {
+                    if ( (hostnameLower.charAt(i) >= 'a' && hostnameLower.charAt(i) <= 'z') || (hostnameLower.charAt(i) >= '0' && hostnameLower.charAt(i) <= '9'))
+                    {
+                        seenPunc = false;
+                    }
+                    else if ((hostnameLower.charAt(i) == '-') || (hostnameLower.charAt(i) == '.'))
+                    {
+                        if (seenPunc == true)
+                        {
+                            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+                        }
+                        else
+                        {
+                            seenPunc = true;
+                        }
+                    }
+                    else
+                    {
+                        throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+                    }
+                }
+                
+            }
             this.port = Integer.parseInt(nestedParams[1]);
         } catch (NumberFormatException e) {
             throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
