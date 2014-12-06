@@ -10,8 +10,8 @@ public class ThreadPool {
 
     /* Array of threads in the threadpool */
     public Thread threads[];
-    private Lock jobLock;
-    private Condition condVar;
+    //private Lock jobLock;
+    //private Condition condVar;
     private Queue<Runnable> jobQueue;
 
     /**
@@ -21,8 +21,8 @@ public class ThreadPool {
      */
     public ThreadPool(int size) {
         threads = new Thread[size];
-	jobLock = new ReentrantLock();
-	condVar = jobLock.newCondition();
+	//jobLock = new ReentrantLock();
+	//condVar = jobLock.newCondition();
 	jobQueue = new LinkedList<Runnable>();
 	for (int i = 0; i < size; i++) {
 	    threads[i] = this.new WorkerThread(this);
@@ -40,10 +40,15 @@ public class ThreadPool {
      *         state. Your implementation may or may not actually throw this.
      */
     public void addJob(Runnable r) {
-	jobLock.lock();
-	jobQueue.add(r);
-	condVar.signal();
-	jobLock.unlock();
+	//jobLock.lock();
+        synchronized (jobQueue)
+        {
+            jobQueue.add(r);
+            jobQueue.notify();
+        }
+        
+	//condVar.signal();
+	//jobLock.unlock();
     }
 
     /**
@@ -53,13 +58,18 @@ public class ThreadPool {
      *         state. Your implementation may or may not actually throw this.
      */
     public Runnable getJob() throws InterruptedException {
-	jobLock.lock();
-	while (jobQueue.isEmpty()) {
-	    condVar.await();
-	}
-	Runnable run = jobQueue.remove();
-	jobLock.unlock();
-	return run;
+        //jobLock.lock();
+        Runnable run = null;
+        synchronized (jobQueue)
+        {
+            while (jobQueue.isEmpty()) {
+                //condVar.await();
+                jobQueue.wait();
+            }
+            run = jobQueue.remove();
+        }
+        //jobLock.unlock();
+        return run;
     }
     
     public void cleanup()
