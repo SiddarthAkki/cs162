@@ -40,14 +40,15 @@ public class KVClient implements KeyValueInterface {
      * @return Socket connected to server
      * @throws KVException if unable to create or connect socket
      */
-    public Socket connectHost() throws KVException {
-	try {
-	    return new Socket(this.server, this.port);
-	} catch (UnknownHostException | SecurityException | IllegalArgumentException e) {
-	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
-	} catch (IOException e) {
-	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
-	}
+    public Socket connectHost() throws KVException
+    {
+        try {
+            return new Socket(this.server, this.port);
+        } catch (NullPointerException | SecurityException | IllegalArgumentException e ) {
+            throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+        } catch (IOException e) {
+            throw new KVException(ERROR_COULD_NOT_CONNECT);
+        }
     }
 
     /**
@@ -91,6 +92,7 @@ public class KVClient implements KeyValueInterface {
 	    Socket sock = connectHost();
 	    putRequest.sendMessage(sock);
 	    KVMessage receive = new KVMessage(sock);
+        closeHost(sock)
 	    if (!receive.getMessage().equals(SUCCESS)) {
 	       throw new KVException(receive.getMessage());
 	    }
@@ -114,6 +116,7 @@ public class KVClient implements KeyValueInterface {
 	    Socket sock = connectHost();
 	    getRequest.sendMessage(sock);
 	    KVMessage response = new KVMessage(sock);
+        closeHost(sock)
 	    if (response.getKey() == null) {
 	       throw new KVException(ERROR_NO_SUCH_KEY);
 	    }
@@ -137,6 +140,7 @@ public class KVClient implements KeyValueInterface {
 	    Socket sock = connectHost();
 	    delRequest.sendMessage(sock);
 	    KVMessage response = new KVMessage(sock);
+        closeHost(sock)
 	    if (!response.getMessage().equals(SUCCESS)) {
 	       throw new KVException(ERROR_NO_SUCH_KEY);
 	    }

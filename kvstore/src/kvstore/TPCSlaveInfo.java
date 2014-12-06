@@ -57,10 +57,12 @@ public class TPCSlaveInfo {
             Socket sock = new Socket(this.hostname, this.port);
             sock.setSoTimeout(timeout);
             return sock;
-        } catch (UnknownHostException | SecurityException | IllegalArgumentException e ) {
+        } catch (SocketException e) {
+            throw new KVException(KVConstants.ERROR_SOCKET_TIMEOUT);
+        } catch (NullPointerException | SecurityException | IllegalArgumentException e ) {
             throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
         } catch (IOException e) {
-            throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
+            throw new KVException(ERROR_COULD_NOT_CONNECT);
         }
     }
 
