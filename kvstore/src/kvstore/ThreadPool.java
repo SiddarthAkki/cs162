@@ -61,6 +61,13 @@ public class ThreadPool {
 	jobLock.unlock();
 	return run;
     }
+    
+    public void cleanup()
+    {
+        for (int i = 0; i < threads.length; i++) {
+            ((WorkerThread)threads[i]).stopThread();
+        }
+    }
 
     /**
      * A thread in the thread pool.
@@ -68,7 +75,8 @@ public class ThreadPool {
     public class WorkerThread extends Thread {
 
         public ThreadPool threadPool;
-
+        public boolean stopped = false;
+        
         /**
          * Constructs a thread for this particular ThreadPool.
          *
@@ -83,11 +91,25 @@ public class ThreadPool {
          */
         @Override
         public void run() {
-	    while (true) {
-		try {
-		    threadPool.getJob().run();
-		} catch (InterruptedException e) {}
-	    }
+            while (!stopped) {
+                try {
+                    threadPool.getJob().run();
+                } catch (InterruptedException e) {}
+            }
+        }
+        
+        public void stopThread()
+        {
+            stopped = true;
         }
     }
 }
+
+
+
+
+
+
+
+
+
