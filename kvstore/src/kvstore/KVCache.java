@@ -274,6 +274,34 @@ public class KVCache implements KeyValueInterface {
     public String toString() {
         return this.toXML();
     }
+    
+    //For testing only. Don't use.
+    public String[] getFirstSetKeys()
+    {
+        LinkedList<Container> setEntryList = sets[0];
+        String[] keys = new String[setEntryList.size()];
+        
+        for (int i = 0; i < setEntryList.size(); i++)
+        {
+            Container entry = setEntryList.get(i);
+            keys[i] = entry.key;
+        }
+        return keys;
+    }
+    
+    //For testing only. Don't use.
+    public boolean[] getFirstSetRefs()
+    {
+        LinkedList<Container> setEntryList = sets[0];
+        boolean[] refs = new boolean[setEntryList.size()];
+        
+        for (int i = 0; i < setEntryList.size(); i++)
+        {
+            Container entry = setEntryList.get(i);
+            refs[i] = entry.ref;
+        }
+        return refs;
+    }
 
     private static class Container {
 
