@@ -116,26 +116,44 @@ public class TPCMasterHandler implements NetworkHandler {
         @Override
         public void run() {
 	    KVMessage response;
+	    String reqName = request.getMsgType();
 	    try {
-		//Not TPC Del
 		if (reqName.equals(DEL_REQ)) {
-		    server.del(key);
-		    message = new KVMessage(RESP, SUCCESS);
+		    this.tpcLog.appendAndFlush(request);
+		    if (this.kvServer.hasKey(request.getKey())) {
+			response = new KVMessage(READY);
+		    } else {
+			response = new KVMessage(ABORT, ERROR_NO_SUCH_KEY);
+		    }
+
 		} else if (reqName.equals(GET_REQ)) {
-		    String keyval = server.get(key);
-		    message = new KVMessage(RESP);
-		    message.setKey(key);
-		    message.setValue(keyval);
-		    //Not TPC Put
+		    String keyval = kvServer.get(request.getKey());
+		    response = new KVMessage(RESP);
+		    response.setKey(request.getKey());
+		    response.setValue(keyval);
+
 		} else if (reqName.equals(PUT_REQ)) {
-		    server.put(key, value);
-		    message = new KVMessage(RESP, SUCCESS);
+		    this.tpcLog.appendAndFlush(request);
+		    try {
+			kvServer.keyValueCheck(request.getKey(), request.getValue());
+			response = new KVMessage(READY);
+		    } catch (KVException e)  {
+			response = new KVMessage(ABORT, e.getMessage());
+		    }
+
+		} else if (reqName.equals(COMMIT) || reqName.equals(ABORT)) {
+		    KVMessage lastEntry = this.tpcLog.getLastEntry();
+		    if (!(lastEntry.getMsgType().equals(COMMIT) || lastEntry.getMsgType().equals(ABORT))) {
+			this.tpcLog.appendAndFlush(request);
+		    }
+		    response = new KVMessage(ACK);
 		}
+
 	    } catch (KVException e) {
-		message = new KVMessage(RESP, e.getKVMessage().getMessage());
+		response = new KVMessage(RESP, e.getKVMessage().getMessage());
 	    }
 	    try {
-		message.sendMessage(master);
+		response.sendMessage(master);
 	    } catch (KVException e) {}
 	    try {
 		master.close();
