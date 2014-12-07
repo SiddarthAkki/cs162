@@ -250,6 +250,7 @@ public class KVCache implements KeyValueInterface {
             cacheEntry.setIsReferenced(String.valueOf(currCont.ref));
             cacheEntries.add(cacheEntry);
           }
+          kvSet.setId(String.valueOf(i));
           xmlSets.add(kvSet);
         }
 
