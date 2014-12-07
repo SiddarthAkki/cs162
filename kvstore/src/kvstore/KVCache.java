@@ -137,7 +137,6 @@ public class KVCache implements KeyValueInterface {
         if (queue.size() < this.maxElemsPerSet) {
           queue.add(elem);
         } else {
-          if (existing == false) {
             boolean swap = false;
             while (swap == false) {
               currElem = queue.get(0);
@@ -152,11 +151,6 @@ public class KVCache implements KeyValueInterface {
                 queue.add(moveElem);
               }
             }
-            if (swap == false) {
-              queue.remove(0);
-              queue.add(elem);
-            }
-          }
         }
       }
       //use String.hashcode()
