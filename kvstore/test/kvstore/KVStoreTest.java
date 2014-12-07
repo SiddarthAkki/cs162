@@ -48,4 +48,47 @@ public class KVStoreTest {
         assertEquals(val, store.get(key));
     }
 
+    @Test(timeout = kTimeoutQuick)
+    public void testToXmlOfEmptyStore() throws KVException {
+        System.out.println(store.toXML());
+    }
+    
+    @Test(timeout = kTimeoutQuick)
+    public void testToXmlOfKVStore() throws KVException {
+        String key = "this is the key.";
+        String val = "this is the value.";
+        store.put(key, val);
+        key = "this is the key 2.";
+        val = "this is the value 2.";
+        store.put(key, val);
+        System.out.println(store.toXML());
+    }
+    
+    @Test(timeout = kTimeoutQuick)
+    public void testDumpToFile() throws KVException {
+        String key = "this is the key.";
+        String val = "this is the value.";
+        store.put(key, val);
+        key = "this is the key 2.";
+        val = "this is the value 2.";
+        store.put(key, val);
+        store.dumpToFile("test.txt");
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -254,4 +254,80 @@ public class KVCacheTest {
         assertEquals(cache.get("woah"), null);
         System.out.println(cache.toXML());
     }
+    
+    @Test(timeout = kTimeoutQuick)
+    //@Category(AG_PROJ3_CODE.class)
+    //@AGTestDetails(points = 1, desc = "")
+    public void testSecondChanceAlgo() {
+        KVCache cache = new KVCache(1, 4);
+        cache.put("B", "hi");
+        cache.put("A", "there");
+        cache.get("A");
+        cache.put("D", "don't care");
+        cache.put("C", "also don't care");
+        String[] expectedKeys = {"B","A","D","C"};
+        assertEquals(cache.getFirstSetKeys(), expectedKeys);
+        boolean[] expectedRefs = {false,true,false,false};
+        //System.out.println("expected: " + expectedRefs[0] + " " + expectedRefs[1] + " " + expectedRefs[2] + " " + expectedRefs[3]);
+        //System.out.println("actual: " + cache.getFirstSetRefs()[0] + " " + cache.getFirstSetRefs()[1] + " " + cache.getFirstSetRefs()[2] + " " + cache.getFirstSetRefs()[3]);
+        assertEquals(cache.getFirstSetRefs()[0], expectedRefs[0]);
+        assertEquals(cache.getFirstSetRefs()[1], expectedRefs[1]);
+        assertEquals(cache.getFirstSetRefs()[2], expectedRefs[2]);
+        assertEquals(cache.getFirstSetRefs()[3], expectedRefs[3]);
+        
+        cache.put("F", "F arrives");
+        String[] expectedKeys2 = {"A","D","C","F"};
+        assertEquals(cache.getFirstSetKeys(), expectedKeys2);
+        boolean[] expectedRefs2 = {true,false,false,false};
+        assertEquals(cache.getFirstSetRefs()[0], expectedRefs2[0]);
+        assertEquals(cache.getFirstSetRefs()[1], expectedRefs2[1]);
+        assertEquals(cache.getFirstSetRefs()[2], expectedRefs2[2]);
+        assertEquals(cache.getFirstSetRefs()[3], expectedRefs2[3]);
+        
+        cache.get("D");
+        cache.put("E", "E arrives");
+        String[] expectedKeys3 = {"F","A","D","E"};
+        assertEquals(cache.getFirstSetKeys(), expectedKeys3);
+        
+        boolean[] expectedRefs3 = {false,false,false,false};
+        assertEquals(cache.getFirstSetRefs()[0], expectedRefs3[0]);
+        assertEquals(cache.getFirstSetRefs()[1], expectedRefs3[1]);
+        assertEquals(cache.getFirstSetRefs()[2], expectedRefs3[2]);
+        assertEquals(cache.getFirstSetRefs()[3], expectedRefs3[3]);
+    }
+    
+    @Test(timeout = kTimeoutQuick)
+    //@Category(AG_PROJ3_CODE.class)
+    //@AGTestDetails(points = 1, desc = "")
+    public void verfiyToXmlOfEmptyCache() {
+        KVCache cache = new KVCache(1, 4);
+        System.out.println(cache.toXML());
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

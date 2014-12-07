@@ -115,15 +115,16 @@ public class KVCache implements KeyValueInterface {
     @Override
     public void put(String key, String value) {
       int setVal = getSetVal(key);
+
       LinkedList<Container> queue = this.sets[setVal];
 
       Container elem = new Container(key, value);
 
       boolean existing = false;
       Container currElem;
-
       for (int i = 0; i < queue.size(); i++) {
         currElem = queue.get(i);
+
         if (currElem.key == key) {
           currElem.value = value;
           currElem.ref = true;
@@ -136,22 +137,20 @@ public class KVCache implements KeyValueInterface {
         if (queue.size() < this.maxElemsPerSet) {
           queue.add(elem);
         } else {
-          if (existing == false) {
             boolean swap = false;
-            for (int i = 0; i < queue.size(); i++) {
-              currElem = queue.get(i);
+            while (swap == false) {
+              currElem = queue.get(0);
               if (currElem.ref == false) {
-                queue.remove(i);
+                queue.remove(0);
                 queue.add(elem);
                 swap = true;
                 break;
+              } else {
+                Container moveElem = queue.remove(0);
+                moveElem.ref = false;
+                queue.add(moveElem);
               }
             }
-            if (swap == false) {
-              queue.remove(0);
-              queue.add(elem);
-            }
-          }
         }
       }
       //use String.hashcode()
@@ -251,6 +250,7 @@ public class KVCache implements KeyValueInterface {
             cacheEntry.setIsReferenced(String.valueOf(currCont.ref));
             cacheEntries.add(cacheEntry);
           }
+          kvSet.setId(String.valueOf(i));
           xmlSets.add(kvSet);
         }
 
@@ -273,6 +273,34 @@ public class KVCache implements KeyValueInterface {
     @Override
     public String toString() {
         return this.toXML();
+    }
+    
+    //For testing only. Don't use.
+    public String[] getFirstSetKeys()
+    {
+        LinkedList<Container> setEntryList = sets[0];
+        String[] keys = new String[setEntryList.size()];
+        
+        for (int i = 0; i < setEntryList.size(); i++)
+        {
+            Container entry = setEntryList.get(i);
+            keys[i] = entry.key;
+        }
+        return keys;
+    }
+    
+    //For testing only. Don't use.
+    public boolean[] getFirstSetRefs()
+    {
+        LinkedList<Container> setEntryList = sets[0];
+        boolean[] refs = new boolean[setEntryList.size()];
+        
+        for (int i = 0; i < setEntryList.size(); i++)
+        {
+            Container entry = setEntryList.get(i);
+            refs[i] = entry.ref;
+        }
+        return refs;
     }
 
     private static class Container {
