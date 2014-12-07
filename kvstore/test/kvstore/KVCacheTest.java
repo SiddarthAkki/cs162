@@ -287,15 +287,6 @@ public class KVCacheTest {
         cache.get("D");
         cache.put("E", "E arrives");
         String[] expectedKeys3 = {"F","A","D","E"};
-        for (int i = 0; i < 4; i++)
-        {
-            System.out.println(expectedKeys3[i]);
-        }
-        String[] test = cache.getFirstSetKeys();
-        for (int i = 0; i< 4; i++)
-        {
-            System.out.println(test[i]);
-        }
         assertEquals(cache.getFirstSetKeys(), expectedKeys3);
         
         boolean[] expectedRefs3 = {false,false,false,false};

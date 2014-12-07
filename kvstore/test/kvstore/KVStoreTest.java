@@ -48,4 +48,14 @@ public class KVStoreTest {
         assertEquals(val, store.get(key));
     }
 
+    @Test(timeout = kTimeoutQuick)
+    public void testToXmlOfEmptyStore() throws KVException {
+        System.out.println(store.toXML());
+    }
 }
+
+
+
+
+
+
