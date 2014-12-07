@@ -106,42 +106,40 @@ public class TPCMasterHandler implements NetworkHandler {
 
     private class RequestThread implements Runnable {
         private Socket master;
-	private KVMessage request
+	private KVMessage request;
 
-	    RequestThread(KVMessage request, Socket master) {
+	RequestThread(KVMessage request, Socket master) {
 	    this.request = request;
 	    this.master = master;
         }
 
         @Override
         public void run() {
-        KVMessage message = null;
-        try {
-            //Not TPC Del
-            if (reqName.equals(DEL_REQ)) {
-                server.del(key);
-                message = new KVMessage(RESP, SUCCESS);
-            } else if (reqName.equals(GET_REQ)) {
-                String keyval = server.get(key);
-                message = new KVMessage(RESP);
-                message.setKey(key);
-                message.setValue(keyval);
-            //Not TPC Put
-            } else if (reqName.equals(PUT_REQ)) {
-                server.put(key, value);
-                message = new KVMessage(RESP, SUCCESS);
-            }
-        } catch (KVException e) {
-            message = new KVMessage(RESP, e.getKVMessage().getMessage());
-        }
-        try {
-            message.sendMessage(master);
-        } catch (KVException e) {}
-            if (!master.isClosed()) {
-            try {
-                master.close();
-            } catch (IOException e) {}
-        }
-    }
+	    KVMessage response;
+	    try {
+		//Not TPC Del
+		if (reqName.equals(DEL_REQ)) {
+		    server.del(key);
+		    message = new KVMessage(RESP, SUCCESS);
+		} else if (reqName.equals(GET_REQ)) {
+		    String keyval = server.get(key);
+		    message = new KVMessage(RESP);
+		    message.setKey(key);
+		    message.setValue(keyval);
+		    //Not TPC Put
+		} else if (reqName.equals(PUT_REQ)) {
+		    server.put(key, value);
+		    message = new KVMessage(RESP, SUCCESS);
+		}
+	    } catch (KVException e) {
+		message = new KVMessage(RESP, e.getKVMessage().getMessage());
+	    }
+	    try {
+		message.sendMessage(master);
+	    } catch (KVException e) {}
+	    try {
+		master.close();
+	    } catch (IOException e) {}
+	}
     }
 }
