@@ -297,6 +297,20 @@ public class KVCacheTest {
             System.out.println(test[i]);
         }
         assertEquals(cache.getFirstSetKeys(), expectedKeys3);
+        
+        boolean[] expectedRefs3 = {false,false,false,false};
+        assertEquals(cache.getFirstSetRefs()[0], expectedRefs3[0]);
+        assertEquals(cache.getFirstSetRefs()[1], expectedRefs3[1]);
+        assertEquals(cache.getFirstSetRefs()[2], expectedRefs3[2]);
+        assertEquals(cache.getFirstSetRefs()[3], expectedRefs3[3]);
+    }
+    
+    @Test(timeout = kTimeoutQuick)
+    //@Category(AG_PROJ3_CODE.class)
+    //@AGTestDetails(points = 1, desc = "")
+    public void verfiyToXmlOfEmptyCache() {
+        KVCache cache = new KVCache(1, 4);
+        System.out.println(cache.toXML());
     }
 }
 
