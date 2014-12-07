@@ -115,15 +115,16 @@ public class KVCache implements KeyValueInterface {
     @Override
     public void put(String key, String value) {
       int setVal = getSetVal(key);
+
       LinkedList<Container> queue = this.sets[setVal];
 
       Container elem = new Container(key, value);
 
       boolean existing = false;
       Container currElem;
-
       for (int i = 0; i < queue.size(); i++) {
         currElem = queue.get(i);
+
         if (currElem.key == key) {
           currElem.value = value;
           currElem.ref = true;
@@ -138,13 +139,17 @@ public class KVCache implements KeyValueInterface {
         } else {
           if (existing == false) {
             boolean swap = false;
-            for (int i = 0; i < queue.size(); i++) {
-              currElem = queue.get(i);
+            while (swap == false) {
+              currElem = queue.get(0);
               if (currElem.ref == false) {
-                queue.remove(i);
+                queue.remove(0);
                 queue.add(elem);
                 swap = true;
                 break;
+              } else {
+                Container moveElem = queue.remove(0);
+                moveElem.ref = false;
+                queue.add(moveElem);
               }
             }
             if (swap == false) {
