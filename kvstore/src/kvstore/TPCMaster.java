@@ -132,7 +132,7 @@ public class TPCMaster {
 	if (nextKey == null) {
 	    nextKey = this.slaves.firstKey();
 	}
-    TPCSlaveInfo returnInfo = this.slaves.get(replicaKey);
+    TPCSlaveInfo returnInfo = this.slaves.get(nextKey);
     slaveLock.unlock();
 	return returnInfo;
     }
