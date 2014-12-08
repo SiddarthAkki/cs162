@@ -135,6 +135,7 @@ public class KVServer implements KeyValueInterface {
         {
             throw new KVException(ERROR_OVERSIZED_VALUE);
         }
+    }
 
     /** This method is purely for convenience and will not be tested. */
     @Override

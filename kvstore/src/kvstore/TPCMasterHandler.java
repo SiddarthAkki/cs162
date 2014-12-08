@@ -3,8 +3,6 @@ package kvstore;
 import static kvstore.KVConstants.*;
 
 import java.io.IOException;
-
-
 import java.net.Socket;
 /**
  * Implements NetworkHandler to handle 2PC operation requests from the Master/
@@ -100,22 +98,26 @@ public class TPCMasterHandler implements NetworkHandler {
             return;
         }
 
-        threadpool.addJob(this.new RequestThread(message, master));
+        threadpool.addJob(this.new RequestThread(message, master, this.kvServer, this.tpcLog));
 
     }
 
     private class RequestThread implements Runnable {
         private Socket master;
 	private KVMessage request;
+	private KVServer kvServer;
+  private TPCLog tpcLog;
 
-	RequestThread(KVMessage request, Socket master) {
+	RequestThread(KVMessage request, Socket master, KVServer server, TPCLog tpcLog) {
 	    this.request = request;
 	    this.master = master;
+	    this.kvServer = kvServer;
+      this.tpcLog = tpcLog;
         }
 
         @Override
         public void run() {
-	    KVMessage response;
+	    KVMessage response = null;
 	    String reqName = request.getMsgType();
 	    try {
 		if (reqName.equals(DEL_REQ)) {
@@ -127,7 +129,7 @@ public class TPCMasterHandler implements NetworkHandler {
 		    }
 
 		} else if (reqName.equals(GET_REQ)) {
-		    String keyval = kvServer.get(request.getKey());
+		    String keyval = this.kvServer.get(request.getKey());
 		    response = new KVMessage(RESP);
 		    response.setKey(request.getKey());
 		    response.setValue(keyval);
@@ -135,7 +137,7 @@ public class TPCMasterHandler implements NetworkHandler {
 		} else if (reqName.equals(PUT_REQ)) {
 		    this.tpcLog.appendAndFlush(request);
 		    try {
-			kvServer.keyValueCheck(request.getKey(), request.getValue());
+			this.kvServer.keyValueCheck(request.getKey(), request.getValue());
 			response = new KVMessage(READY);
 		    } catch (KVException e)  {
 			response = new KVMessage(ABORT, e.getMessage());
