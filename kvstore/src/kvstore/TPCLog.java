@@ -7,6 +7,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
+import static kvstore.KVConstants.*;
+
 public class TPCLog {
 
     private String logPath;
@@ -107,7 +109,27 @@ public class TPCLog {
      */
     public void rebuildServer() throws KVException {
         loadFromDisk();
-
+        for (int i = 0; i < this.entries.size()/2; i++) {
+          int action_index = 2*i;
+          int result_index = 2*i + 1;
+          KVMessage action = this.entries.get(action_index);
+          KVMessage result = this.entries.get(result_index);
+          if (result.getMsgType().equals(COMMIT)) {
+            if (action.getMsgType().equals(PUT_REQ)) {
+              try {
+                this.kvServer.put(action.getKey(), action.getValue());
+              } catch (KVException e) {
+                throw new KVException(e.getMessage());
+              }
+            } else if (action.getMsgType().equals(DEL_REQ)) {
+              try {
+                this.kvServer.del(action.getKey());
+              } catch (KVException e) {
+                throw new KVException(e.getMessage());
+              }
+            }
+          }
+        }
         // implement me
     }
 

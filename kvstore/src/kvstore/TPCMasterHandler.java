@@ -3,8 +3,6 @@ package kvstore;
 import static kvstore.KVConstants.*;
 
 import java.io.IOException;
-
-
 import java.net.Socket;
 /**
  * Implements NetworkHandler to handle 2PC operation requests from the Master/
@@ -90,7 +88,7 @@ public class TPCMasterHandler implements NetworkHandler {
         try {
             message = new KVMessage(master);
         } catch (KVException e) {
-            message = new KVMessage(RESP, e.getKVMessage().getMessage());
+            message = new KVMessage(ABORT, e.getKVMessage().getMessage());
             try {
                 message.sendMessage(master);
             } catch (KVException f) {}
@@ -99,57 +97,83 @@ public class TPCMasterHandler implements NetworkHandler {
             } catch (IOException g) {}
             return;
         }
-        String messType = message.getMsgType();
-        String key = message.getKey();
-        String val = message.getValue();
-        threadpool.addJob(new RequestThread(key, val, messType, master, kvServer));
+
+        threadpool.addJob(this.new RequestThread(message, master, this.kvServer, this.tpcLog));
 
     }
 
-    private static class RequestThread implements Runnable {
-        private String key;
-        private String value;
-        private String reqName;
+    private class RequestThread implements Runnable {
         private Socket master;
-        private KVServer server;
+	private KVMessage request;
+	private KVServer kvServer;
+  private TPCLog tpcLog;
 
-        RequestThread(String key, String value, String reqName, Socket master, KVServer server) {
-            this.key = key;
-            this.value = value;
-            this.reqName = reqName;
-            this.master = master;
-            this.server = server;
+	RequestThread(KVMessage request, Socket master, KVServer kvServer, TPCLog tpcLog) {
+	    this.request = request;
+	    this.master = master;
+	    this.kvServer = kvServer;
+      this.tpcLog = tpcLog;
         }
 
         @Override
         public void run() {
-        KVMessage message = null;
-        try {
-            //Not TPC Del
-            if (reqName.equals(DEL_REQ)) {
-                server.del(key);
-                message = new KVMessage(RESP, SUCCESS);
-            } else if (reqName.equals(GET_REQ)) {
-                String keyval = server.get(key);
-                message = new KVMessage(RESP);
-                message.setKey(key);
-                message.setValue(keyval);
-            //Not TPC Put
-            } else if (reqName.equals(PUT_REQ)) {
-                server.put(key, value);
-                message = new KVMessage(RESP, SUCCESS);
-            }
-        } catch (KVException e) {
-            message = new KVMessage(RESP, e.getKVMessage().getMessage());
-        }
-        try {
-            message.sendMessage(master);
-        } catch (KVException e) {}
-            if (!master.isClosed()) {
-            try {
-                master.close();
-            } catch (IOException e) {}
-        }
-    }
+	    KVMessage response = null;
+	    String reqName = request.getMsgType();
+	    try {
+		if (reqName.equals(DEL_REQ)) {
+		    this.tpcLog.appendAndFlush(request);
+		    if (this.kvServer.hasKey(request.getKey())) {
+			response = new KVMessage(READY);
+		    } else {
+			response = new KVMessage(ABORT, ERROR_NO_SUCH_KEY);
+		    }
+
+		} else if (reqName.equals(GET_REQ)) {
+		    String keyval = this.kvServer.get(request.getKey());
+		    response = new KVMessage(RESP);
+		    response.setKey(request.getKey());
+		    response.setValue(keyval);
+
+		} else if (reqName.equals(PUT_REQ)) {
+		    this.tpcLog.appendAndFlush(request);
+		    try {
+			this.kvServer.keyValueCheck(request.getKey(), request.getValue());
+			response = new KVMessage(READY);
+		    } catch (KVException e)  {
+			response = new KVMessage(ABORT, e.getMessage());
+		    }
+
+		} else if (reqName.equals(COMMIT) || reqName.equals(ABORT)) {
+		    KVMessage lastEntry = this.tpcLog.getLastEntry();
+		    if (!(lastEntry.getMsgType().equals(COMMIT) || lastEntry.getMsgType().equals(ABORT))) {
+    			this.tpcLog.appendAndFlush(request);
+                if (reqName.equals(COMMIT)) {
+                    try {
+                        if (lastEntry.getMsgType().equals(PUT_REQ)) {
+                            this.kvServer.put(lastEntry.getKey(), lastEntry.getValue());
+                        } else if (lastEntry.getMsgType().equals(DEL_REQ)) {
+                            this.kvServer.del(lastEntry.getKey());
+                        }
+                        response = new KVMessage(ACK);
+                    } catch (KVException e)  {
+                        response = new KVMessage(RESP, e.getMessage());
+                    }
+
+                } else {
+                    response = new KVMessage(ACK);
+                }
+		    }
+		}
+
+	    } catch (KVException e) {
+		response = new KVMessage(RESP, e.getKVMessage().getMessage());
+	    }
+	    try {
+		response.sendMessage(master);
+	    } catch (KVException e) {}
+	    try {
+		master.close();
+	    } catch (IOException e) {}
+	}
     }
 }

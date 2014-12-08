@@ -42,15 +42,7 @@ public class KVServer implements KeyValueInterface {
      */
     @Override
     public void put(String key, String value) throws KVException {
-        if (key.length() > MAX_KEY_SIZE)
-        {
-            throw new KVException(ERROR_OVERSIZED_KEY);
-        }
-        
-        if (value.length() > MAX_VAL_SIZE)
-        {
-            throw new KVException(ERROR_OVERSIZED_VALUE);
-        }
+        keyValueCheck(key, value);
         
         Lock setLock = this.dataCache.getLock(key);
         setLock.lock();
@@ -130,6 +122,19 @@ public class KVServer implements KeyValueInterface {
             return false;
         }
         return true;
+    }
+
+
+    public void keyValueCheck(String key, String value) throws KVException {
+        if (key.length() > MAX_KEY_SIZE)
+        {
+            throw new KVException(ERROR_OVERSIZED_KEY);
+        }
+        
+        if (value.length() > MAX_VAL_SIZE)
+        {
+            throw new KVException(ERROR_OVERSIZED_VALUE);
+        }
     }
 
     /** This method is purely for convenience and will not be tested. */

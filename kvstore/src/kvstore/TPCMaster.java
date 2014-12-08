@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
 
 public class TPCMaster {
 
@@ -16,7 +17,11 @@ public class TPCMaster {
     public static final int TIMEOUT = 3000;
 
     private ReentrantLock slaveLock;
+
     private boolean fullyRegistered = false;
+
+    private Condition slaveCondition;
+
 
 
     /**
@@ -115,12 +120,15 @@ public class TPCMaster {
      * @return SlaveInfo of first replica
      */
     public TPCSlaveInfo findFirstReplica(String key) {
+    slaveLock.lock();
 	long keyhash = TPCMaster.hashTo64bit(key);
 	Long replicaKey = this.slaves.higherKey(keyhash);
 	if (replicaKey == null) {
 	    replicaKey = this.slaves.firstKey();
 	}
-	return this.slaves.get(replicaKey);
+    TPCSlaveInfo returnInfo = this.slaves.get(replicaKey);
+    slaveLock.unlock();
+	return returnInfo;
     }
 
     /**
@@ -130,11 +138,14 @@ public class TPCMaster {
      * @return SlaveInfo of successor replica
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
+    slaveLock.lock();
 	Long nextKey = this.slaves.higherKey(firstReplica.getSlaveID());
 	if (nextKey == null) {
 	    nextKey = this.slaves.firstKey();
 	}
-	return this.slaves.get(nextKey);
+    TPCSlaveInfo returnInfo = this.slaves.get(nextKey);
+    slaveLock.unlock();
+	return returnInfo;
     }
 
     /**
@@ -165,7 +176,73 @@ public class TPCMaster {
      */
     public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
             throws KVException {
-        // implement me
+        while (!fullyRegistered)
+        {
+            try {
+                synchronized (this) {
+                    this.wait(100);
+                }
+            } catch (InterruptedException e) {
+            }
+        }
+	TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
+	TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
+	Socket contactFirst = firstSlave.connectHost(TIMEOUT);
+	Socket contactSecond = secondSlave.connectHost(TIMEOUT);
+	KVMessage firstReply;
+	KVMessage secondReply;
+	try {
+	    msg.sendMessage(contactFirst);
+	    firstReply = new KVMessage(contactFirst, TIMEOUT);
+	} catch (KVException e) {
+	    firstReply = new KVMessage(ABORT, e.getMessage());
+	}
+
+	try {
+	    msg.sendMessage(contactSecond);
+	    secondReply = new KVMessage(contactSecond, TIMEOUT);
+	} catch (KVException e) {
+	    secondReply = new KVMessage(ABORT, e.getMessage());
+	}
+
+	KVMessage globalDecision;
+	if (firstReply.getMsgType().equals(ABORT) || secondReply.getMsgType().equals(ABORT)) {
+	    globalDecision = new KVMessage(ABORT);
+	} else {
+	    globalDecision = new KVMessage(COMMIT);
+	}
+	
+	boolean firstAck = false;
+	boolean secondAck = false;
+	Socket firstPhaseTwoConnection;
+	Socket secondPhaseTwoConnection;
+	KVMessage firstPhaseTwoReply;
+	KVMessage secondPhaseTWoReply;
+	while (!firstAck) {
+	    try {
+        firstSlave = findFirstReplica(msg.getKey());
+		firstPhaseTwoConnection = firstSlave.connectHost(TIMEOUT);
+		globalDecision.sendMessage(firstPhaseTwoConnection);
+		firstPhaseTwoReply = new KVMessage(firstPhaseTwoConnection, TIMEOUT);
+		firstAck = true;
+	    } catch (KVException e) {}
+	}
+
+	while (!secondAck) {
+	    try {
+        secondSlave = findSuccessor(firstSlave);
+		secondPhaseTwoConnection = secondSlave.connectHost(TIMEOUT);
+		globalDecision.sendMessage(secondPhaseTwoConnection);
+		firstPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
+		secondAck = true;
+	    } catch (KVException e) {}
+	}
+	if (firstReply.getMsgType().equals(ABORT)) {
+	    throw new KVException(firstReply.getMessage());
+	}
+	if (secondReply.getMsgType().equals(ABORT)) {
+	    throw new KVException(secondReply.getMessage());
+	}
     }
 
     /**
