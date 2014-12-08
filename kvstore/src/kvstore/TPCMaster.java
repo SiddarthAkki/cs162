@@ -16,7 +16,7 @@ public class TPCMaster {
     public static final int TIMEOUT = 3000;
 
     private ReentrantLock slaveLock;
-
+    private boolean fullyRegistered = false;
 
 
     /**
@@ -57,7 +57,15 @@ public class TPCMaster {
 	       this.slaves.put(slave.getSlaveID(), slave);
         }
         slaveLock.unlock();
-
+        
+        synchronized (this) {
+            if (slaves.size() >= this.numSlaves)
+            {
+                this.fullyRegistered = true;
+                notifyAll();
+            }
+        }
+         
     }
 
     /**
@@ -178,6 +186,7 @@ public class TPCMaster {
         // implement me
         //when getting a key from a given set it should be serial requests
         //when getting a key from different sets it should be concurrent requests
+    
         String key = msg.getKey();
         Lock masterLock = masterCache.getLock(key);
         masterLock.lock();
@@ -187,6 +196,15 @@ public class TPCMaster {
             masterLock.unlock();
             return value;
         } else {
+            while (!fullyRegistered)
+            {
+                try {
+                    synchronized (this) {
+                        this.wait(100);
+                    }
+                } catch (InterruptedException e) {
+                }
+            }
             TPCSlaveInfo firstRep = findFirstReplica(key);
             KVMessage recvMsg;
             try {

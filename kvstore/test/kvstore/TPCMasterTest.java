@@ -153,12 +153,13 @@ public class TPCMasterTest {
             when(kvmRespMock.getMsgType()).thenReturn(RESP);
             when(kvmRespMock.getKey()).thenReturn("I'm kvmRespMock key!");
             when(kvmRespMock.getValue()).thenReturn("I'm kvmRespMock value!");
-
+            
             master.registerSlave(slave1);
             master.registerSlave(slave2);
 	        KVMessage msg = new KVMessage(GET_REQ);
 	        msg.setKey("I'm kvmRespMock key!");
 	        assertEquals(master.handleGet(msg), "I'm kvmRespMock value!");
+            
 	        //Test to see that phase 1 wasn't entered
 	        verify(kvmRespMock, times(1)).getValue();
 	        verify(kvmRespMock, times(0)).getKey();
@@ -186,7 +187,7 @@ public class TPCMasterTest {
 				fail("This shouldn't fail");
 		}
 	}
-    
+  
     @Test
 	public void testInvalidRegMsg() {
 		try {
