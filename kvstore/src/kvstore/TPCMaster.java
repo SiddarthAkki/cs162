@@ -109,12 +109,15 @@ public class TPCMaster {
      * @return SlaveInfo of first replica
      */
     public TPCSlaveInfo findFirstReplica(String key) {
+    slaveLock.lock();
 	long keyhash = TPCMaster.hashTo64bit(key);
 	Long replicaKey = this.slaves.higherKey(keyhash);
 	if (replicaKey == null) {
 	    replicaKey = this.slaves.firstKey();
 	}
-	return this.slaves.get(replicaKey);
+    TPCSlaveInfo returnInfo = this.slaves.get(replicaKey);
+    slaveLock.unlock();
+	return returnInfo;
     }
 
     /**
@@ -124,11 +127,14 @@ public class TPCMaster {
      * @return SlaveInfo of successor replica
      */
     public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
+    slaveLock.lock();
 	Long nextKey = this.slaves.higherKey(firstReplica.getSlaveID());
 	if (nextKey == null) {
 	    nextKey = this.slaves.firstKey();
 	}
-	return this.slaves.get(nextKey);
+    TPCSlaveInfo returnInfo = this.slaves.get(replicaKey);
+    slaveLock.unlock();
+	return returnInfo;
     }
 
     /**
@@ -195,6 +201,7 @@ public class TPCMaster {
 	KVMessage secondPhaseTWoReply;
 	while (!firstAck) {
 	    try {
+        firstSlave = findFirstReplica(msg.getKey());
 		firstPhaseTwoConnection = firstSlave.connectHost(TIMEOUT);
 		globalDecision.sendMessage(firstPhaseTwoConnection);
 		firstPhaseTwoReply = new KVMessage(firstPhaseTwoConnection, TIMEOUT);
@@ -204,6 +211,7 @@ public class TPCMaster {
 
 	while (!secondAck) {
 	    try {
+        secondSlave = findSuccessor(firstSlave);
 		secondPhaseTwoConnection = secondSlave.connectHost(TIMEOUT);
 		globalDecision.sendMessage(secondPhaseTwoConnection);
 		firstPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
