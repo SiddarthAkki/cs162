@@ -108,7 +108,7 @@ public class TPCMasterHandler implements NetworkHandler {
 	private KVServer kvServer;
   private TPCLog tpcLog;
 
-	RequestThread(KVMessage request, Socket master, KVServer server, TPCLog tpcLog) {
+	RequestThread(KVMessage request, Socket master, KVServer kvServer, TPCLog tpcLog) {
 	    this.request = request;
 	    this.master = master;
 	    this.kvServer = kvServer;
