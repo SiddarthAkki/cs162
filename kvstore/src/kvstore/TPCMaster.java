@@ -165,7 +165,11 @@ public class TPCMaster {
      */
     public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
             throws KVException {
-	
+
+              while (this.numSlaves != this.slaves.size()) {
+                //busy wait
+              }
+
 	TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
 	TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
 	Socket contactFirst = firstSlave.connectHost(TIMEOUT);
@@ -192,7 +196,7 @@ public class TPCMaster {
 	} else {
 	    globalDecision = new KVMessage(COMMIT);
 	}
-	
+
 	boolean firstAck = false;
 	boolean secondAck = false;
 	Socket firstPhaseTwoConnection;
@@ -244,6 +248,10 @@ public class TPCMaster {
         // implement me
         //when getting a key from a given set it should be serial requests
         //when getting a key from different sets it should be concurrent requests
+
+        while (this.numSlaves != this.slaves.size()) {
+          //busy wait
+        }
         String key = msg.getKey();
         Lock masterLock = masterCache.getLock(key);
         masterLock.lock();
