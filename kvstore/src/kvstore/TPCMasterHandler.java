@@ -38,7 +38,6 @@ public class TPCMasterHandler implements NetworkHandler {
      * @param connections the number of connections in this slave's ThreadPool
      */
     public TPCMasterHandler(long slaveID, KVServer kvServer, TPCLog log, int connections) {
-        this.tpcLog.appendAndFlush(request);
         this.slaveID = slaveID;
         this.kvServer = kvServer;
         this.tpcLog = log;
@@ -150,9 +149,9 @@ public class TPCMasterHandler implements NetworkHandler {
     			this.tpcLog.appendAndFlush(request);
                 if (reqName.equals(COMMIT)) {
                     try {
-                        if lastEntry.getMsgType().equals(PUT_REQ) {
+                        if (lastEntry.getMsgType().equals(PUT_REQ)) {
                             this.kvServer.put(lastEntry.getKey(), lastEntry.getValue());
-                        } else if lastEntry.getMsgType().equals(DEL_REQ) {
+                        } else if (lastEntry.getMsgType().equals(DEL_REQ)) {
                             this.kvServer.del(lastEntry.getKey());
                         }
                         response = new KVMessage(ACK);
