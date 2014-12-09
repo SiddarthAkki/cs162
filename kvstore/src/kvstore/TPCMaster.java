@@ -16,11 +16,12 @@ public class TPCMaster {
 
     public static final int TIMEOUT = 3000;
 
-    private ReentrantLock slaveLock;
+    ReentrantLock slaveLock;
 
-    private boolean fullyRegistered = false;
+    boolean fullyRegistered = false;
 
-    private Condition slaveCondition;
+    Condition slaveCondition;
+
 
 
 
@@ -34,6 +35,7 @@ public class TPCMaster {
         this.numSlaves = numSlaves;
         this.masterCache = cache;
         this.slaveLock = new ReentrantLock();
+        this.slaveCondition = slaveLock.newCondition();
 	this.slaves = new TreeMap<Long, TPCSlaveInfo>(new Comparator<Long>() {
 		public int compare(Long first, Long second) {
 		    boolean comp1 = TPCMaster.isLessThanUnsigned(first, second);
@@ -58,19 +60,18 @@ public class TPCMaster {
      */
     public void registerSlave(TPCSlaveInfo slave) {
         slaveLock.lock();
+
         if (this.slaves.containsKey(slave.getSlaveID()) || this.slaves.size() < this.numSlaves) {
 	       this.slaves.put(slave.getSlaveID(), slave);
         }
-        slaveLock.unlock();
-        
-        synchronized (this) {
-            if (slaves.size() >= this.numSlaves)
-            {
-                this.fullyRegistered = true;
-                notifyAll();
-            }
+
+        if (slaves.size() >= this.numSlaves)
+        {
+            this.fullyRegistered = true;
+            slaveCondition.signalAll();
         }
          
+        slaveLock.unlock();
     }
 
     /**
@@ -176,15 +177,6 @@ public class TPCMaster {
      */
     public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
             throws KVException {
-        while (!fullyRegistered)
-        {
-            try {
-                synchronized (this) {
-                    this.wait(100);
-                }
-            } catch (InterruptedException e) {
-            }
-        }
 	TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
 	TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
 	Socket contactFirst = firstSlave.connectHost(TIMEOUT);
@@ -273,15 +265,6 @@ public class TPCMaster {
             masterLock.unlock();
             return value;
         } else {
-            while (!fullyRegistered)
-            {
-                try {
-                    synchronized (this) {
-                        this.wait(100);
-                    }
-                } catch (InterruptedException e) {
-                }
-            }
             TPCSlaveInfo firstRep = findFirstReplica(key);
             KVMessage recvMsg;
             try {

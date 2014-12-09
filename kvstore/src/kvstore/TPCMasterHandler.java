@@ -68,10 +68,15 @@ public class TPCMasterHandler implements NetworkHandler {
 	repr += this.slaveID + "@" + server.getHostname() + ":" + server.getPort();
 	KVMessage message = new KVMessage(REGISTER, repr);
 	message.sendMessage(master);
-    
 	KVMessage response = new KVMessage(master);
+    try{
+        master.close();
+    } catch (IOException e){}
 	String masterResponse = response.getMessage();
-	//PARSE MESSAGE!!!!!! INCOMPLETE!!!!!!!!!
+    String correct = "Successfully registered " + repr;
+    if (!masterResponse.equals(correct)){
+        throw new KVException(masterResponse);
+    }
     
     }
 
