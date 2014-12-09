@@ -59,10 +59,8 @@ public class TPCMasterHandler implements NetworkHandler {
     public void registerWithMaster(String masterHostname, SocketServer server)
             throws KVException {
 	Socket master = null;
-	Socket listener = null;
 	try {
 	    master = new Socket(masterHostname, 9090);
-	    listener = new Socket(server.getHostname(), server.getPort());
 	} catch (IOException e) {
 	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
 	}
@@ -70,9 +68,11 @@ public class TPCMasterHandler implements NetworkHandler {
 	repr += this.slaveID + "@" + server.getHostname() + ":" + server.getPort();
 	KVMessage message = new KVMessage(REGISTER, repr);
 	message.sendMessage(master);
-	KVMessage response = new KVMessage(listener);
+    
+	KVMessage response = new KVMessage(master);
 	String masterResponse = response.getMessage();
 	//PARSE MESSAGE!!!!!! INCOMPLETE!!!!!!!!!
+    
     }
 
     /**
