@@ -153,13 +153,13 @@ public class TPCMasterTest {
             when(kvmRespMock.getMsgType()).thenReturn(RESP);
             when(kvmRespMock.getKey()).thenReturn("I'm kvmRespMock key!");
             when(kvmRespMock.getValue()).thenReturn("I'm kvmRespMock value!");
-            
+
             master.registerSlave(slave1);
             master.registerSlave(slave2);
 	        KVMessage msg = new KVMessage(GET_REQ);
 	        msg.setKey("I'm kvmRespMock key!");
 	        assertEquals(master.handleGet(msg), "I'm kvmRespMock value!");
-            
+
 	        //Test to see that phase 1 wasn't entered
 	        verify(kvmRespMock, times(1)).getValue();
 	        verify(kvmRespMock, times(0)).getKey();
@@ -170,13 +170,16 @@ public class TPCMasterTest {
 	}
 
 	@Test
-	public void testFirstSlaveMissHandleGet() {
+	public void testInMasterCacheHandleGet() {
 		try {
 			masterCache = new KVCache(5, 5);
 			// masterCache = mock(KVCache.class);
 			master = new TPCMaster(2, masterCache);
+			
 			slave1 = mock(TPCSlaveInfo.class);
 			slave2 = mock(TPCSlaveInfo.class);
+			master.registerSlave(slave1);
+			master.registerSlave(slave2);
 
 			masterCache.put("hello", "world");
 			KVMessage msg = new KVMessage(GET_REQ);
@@ -187,7 +190,7 @@ public class TPCMasterTest {
 				fail("This shouldn't fail");
 		}
 	}
-  
+
     @Test
 	public void testInvalidRegMsg() {
 		try {
@@ -197,7 +200,7 @@ public class TPCMasterTest {
             String errMsg = kve.getKVMessage().getMessage();
             assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
 		}
-        
+
         try {
 			slave1 = new TPCSlaveInfo(SLAVE1 + "@111.111.111.111-.-:1");
             fail("TPCSlaveInfo did not throw a KVException!");
@@ -205,7 +208,7 @@ public class TPCMasterTest {
             String errMsg = kve.getKVMessage().getMessage();
             assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
 		}
-        
+
         try {
 			slave1 = new TPCSlaveInfo(SLAVE1 + "@hello:world:55000");
             fail("TPCSlaveInfo did not throw a KVException!");
@@ -213,7 +216,7 @@ public class TPCMasterTest {
             String errMsg = kve.getKVMessage().getMessage();
             assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
 		}
-        
+
         try {
 			slave1 = new TPCSlaveInfo(SLAVE1 + "@google.c   om:55000");
             fail("TPCSlaveInfo did not throw a KVException!");
@@ -221,19 +224,7 @@ public class TPCMasterTest {
             String errMsg = kve.getKVMessage().getMessage();
             assertTrue(errMsg.equals(ERROR_INVALID_FORMAT));
 		}
-        
+
 	}
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
