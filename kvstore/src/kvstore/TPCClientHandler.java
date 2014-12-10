@@ -70,6 +70,11 @@ public class TPCClientHandler implements NetworkHandler {
 
 	@Override
 	public void run() {
+		tpcMaster.slaveLock.lock();
+		if (!tpcMaster.fullyRegistered) {
+			tpcMaster.slaveCondition.await();
+		}
+		tpcMaster.slaveLock.unlock();
 	    String reqName = request.getMsgType();
 	    KVMessage response = null;
 	    try {
