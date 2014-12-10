@@ -72,7 +72,9 @@ public class TPCClientHandler implements NetworkHandler {
 	public void run() {
 		tpcMaster.slaveLock.lock();
 		if (!tpcMaster.fullyRegistered) {
-			tpcMaster.slaveCondition.await();
+			try {
+				tpcMaster.slaveCondition.await();
+			} catch (InterruptedException e) {}
 		}
 		tpcMaster.slaveLock.unlock();
 	    String reqName = request.getMsgType();
