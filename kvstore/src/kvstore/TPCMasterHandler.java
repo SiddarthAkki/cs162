@@ -178,6 +178,11 @@ public class TPCMasterHandler implements NetworkHandler {
 	    } catch (KVException e) {
 		response = new KVMessage(RESP, e.getKVMessage().getMessage());
 	    }
+        if (response == null)
+        {
+            System.out.println("Error: this should never happen");
+            return;
+        }
 	    try {
 		response.sendMessage(master);
 	    } catch (KVException e) {}
