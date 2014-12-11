@@ -213,6 +213,7 @@ public class TPCMaster {
 	
 	boolean firstAck = false;
 	boolean secondAck = false;
+    boolean validAck = true;
 	Socket firstPhaseTwoConnection;
 	Socket secondPhaseTwoConnection;
 	KVMessage firstPhaseTwoReply;
@@ -224,8 +225,7 @@ public class TPCMaster {
 		globalDecision.sendMessage(firstPhaseTwoConnection);
 		firstPhaseTwoReply = new KVMessage(firstPhaseTwoConnection, TIMEOUT);
         if (!firstPhaseTwoReply.getMsgType().equals(ACK)) {
-            System.out.println("Should not occur: Slave did not respond with an ack");
-            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+            validAck = false;
         }
 		firstAck = true;
 	    } catch (KVException e) {}
@@ -238,12 +238,16 @@ public class TPCMaster {
 		globalDecision.sendMessage(secondPhaseTwoConnection);
 		secondPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
         if (!secondPhaseTwoReply.getMsgType().equals(ACK)) {
-            System.out.println("Should not occur: Slave did not respond with an ack");
-            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+            validAck = false;
         }
 		secondAck = true;
 	    } catch (KVException e) {}
 	}
+    if (!validAck)
+    {
+        System.out.println("Should not occur: Slave did not respond with an ack");
+        throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+    }
 	if (firstReply.getMsgType().equals(ABORT)) {
 	    throw new KVException(firstReply.getMessage());
 	}
