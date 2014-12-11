@@ -60,7 +60,7 @@ public class TPCMasterHandler implements NetworkHandler {
             throws KVException {
 	Socket master = null;
 	try {
-	    master = new Socket(masterHostname, 9090);
+	    master = new Socket(masterHostname, REGISTRATION_PORT);
 	} catch (IOException e) {
 	    throw new KVException(ERROR_COULD_NOT_CREATE_SOCKET);
 	}
@@ -77,7 +77,7 @@ public class TPCMasterHandler implements NetworkHandler {
     if (!masterResponse.equals(correct)){
         throw new KVException(ERROR_INVALID_FORMAT);
     }
-    
+
     }
 
     /**
