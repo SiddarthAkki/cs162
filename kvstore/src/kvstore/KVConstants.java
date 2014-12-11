@@ -2,6 +2,8 @@ package kvstore;
 
 public class KVConstants {
 
+    // registration port
+    public static final int REGISTRATION_PORT = 9090;
     // general constants used for proj3 and proj4
     public static final String GET_REQ  = "getreq";
     public static final String PUT_REQ  = "putreq";
