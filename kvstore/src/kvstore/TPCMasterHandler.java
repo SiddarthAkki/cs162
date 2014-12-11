@@ -75,7 +75,7 @@ public class TPCMasterHandler implements NetworkHandler {
 	String masterResponse = response.getMessage();
     String correct = "Successfully registered " + repr;
     if (!masterResponse.equals(correct)){
-        throw new KVException(masterResponse);
+        throw new KVException(ERROR_INVALID_FORMAT);
     }
     
     }

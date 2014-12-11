@@ -202,6 +202,13 @@ public class TPCMaster {
 	    globalDecision = new KVMessage(ABORT);
 	} else {
 	    globalDecision = new KVMessage(COMMIT);
+        if (isPutReq)
+        {
+            Lock masterCacheLock = masterCache.getLock(msg.getKey());
+            masterCacheLock.lock();
+            masterCache.put(msg.getKey(), msg.getValue());
+            masterCacheLock.unlock();
+        }
 	}
 	
 	boolean firstAck = false;
@@ -216,6 +223,10 @@ public class TPCMaster {
 		firstPhaseTwoConnection = firstSlave.connectHost(TIMEOUT);
 		globalDecision.sendMessage(firstPhaseTwoConnection);
 		firstPhaseTwoReply = new KVMessage(firstPhaseTwoConnection, TIMEOUT);
+        if (!firstPhaseTwoReply.getMsgType().equals(ACK)) {
+            System.out.println("Should not occur: Slave did not respond with an ack");
+            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+        }
 		firstAck = true;
 	    } catch (KVException e) {}
 	}
@@ -226,6 +237,10 @@ public class TPCMaster {
 		secondPhaseTwoConnection = secondSlave.connectHost(TIMEOUT);
 		globalDecision.sendMessage(secondPhaseTwoConnection);
 		firstPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
+        if (!firstPhaseTwoReply.getMsgType().equals(ACK)) {
+            System.out.println("Should not occur: Slave did not respond with an ack");
+            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+        }
 		secondAck = true;
 	    } catch (KVException e) {}
 	}

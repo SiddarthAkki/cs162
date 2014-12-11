@@ -82,7 +82,6 @@ public class TPCMurderDeathKillStud {
 
     @Before
     public void setUp() throws Exception {
-
         hostname = InetAddress.getLocalHost().getHostAddress();
         p1Death.setKey(KEY1);
         p1Death.setValue("GOBEARS");
