@@ -216,7 +216,7 @@ public class TPCMaster {
 	Socket firstPhaseTwoConnection;
 	Socket secondPhaseTwoConnection;
 	KVMessage firstPhaseTwoReply;
-	KVMessage secondPhaseTWoReply;
+	KVMessage secondPhaseTwoReply;
 	while (!firstAck) {
 	    try {
         firstSlave = findFirstReplica(msg.getKey());
@@ -236,8 +236,8 @@ public class TPCMaster {
         secondSlave = findSuccessor(firstSlave);
 		secondPhaseTwoConnection = secondSlave.connectHost(TIMEOUT);
 		globalDecision.sendMessage(secondPhaseTwoConnection);
-		firstPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
-        if (!firstPhaseTwoReply.getMsgType().equals(ACK)) {
+		secondPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
+        if (!secondPhaseTwoReply.getMsgType().equals(ACK)) {
             System.out.println("Should not occur: Slave did not respond with an ack");
             throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
         }

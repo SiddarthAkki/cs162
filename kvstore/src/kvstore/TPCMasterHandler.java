@@ -168,6 +168,11 @@ public class TPCMasterHandler implements NetworkHandler {
                     response = new KVMessage(ACK);
                 }
 		    }
+            else
+            {
+                /* THIS MAY BE WRONG. SOMEONE PLEASE CHECK!*/
+                response = new KVMessage(ACK);
+            }
 		}
 
 	    } catch (KVException e) {
