@@ -181,6 +181,9 @@ public class TPCMasterHandler implements NetworkHandler {
         if (response == null)
         {
             System.out.println("Error: this should never happen");
+            try {
+                master.close();
+            } catch (IOException e) {}
             return;
         }
 	    try {
