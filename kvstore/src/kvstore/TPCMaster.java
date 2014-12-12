@@ -202,13 +202,17 @@ public class TPCMaster {
 	    globalDecision = new KVMessage(ABORT);
 	} else {
 	    globalDecision = new KVMessage(COMMIT);
+        Lock masterCacheLock = masterCache.getLock(msg.getKey());
+        masterCacheLock.lock();
         if (isPutReq)
         {
-            Lock masterCacheLock = masterCache.getLock(msg.getKey());
-            masterCacheLock.lock();
             masterCache.put(msg.getKey(), msg.getValue());
-            masterCacheLock.unlock();
         }
+        else
+        {
+            masterCache.del(msg.getKey());
+        }
+        masterCacheLock.unlock();
 	}
 	
 	boolean firstAck = false;
