@@ -180,7 +180,7 @@ public class TPCMasterHandler implements NetworkHandler {
                 try {
                     master.close();
                 } catch (IOException e) {}
-                    return;
+                return;
             }
             try {
                 response.sendMessage(master);

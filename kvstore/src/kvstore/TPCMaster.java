@@ -177,6 +177,8 @@ public class TPCMaster {
      */
     public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
             throws KVException {
+    Lock masterCacheLock = masterCache.getLock(msg.getKey());
+    masterCacheLock.lock();
 	TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
 	TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
 	Socket contactFirst = firstSlave.connectHost(TIMEOUT);
@@ -202,13 +204,16 @@ public class TPCMaster {
 	    globalDecision = new KVMessage(ABORT);
 	} else {
 	    globalDecision = new KVMessage(COMMIT);
+        
         if (isPutReq)
         {
-            Lock masterCacheLock = masterCache.getLock(msg.getKey());
-            masterCacheLock.lock();
             masterCache.put(msg.getKey(), msg.getValue());
-            masterCacheLock.unlock();
         }
+        else
+        {
+            masterCache.del(msg.getKey());
+        }
+       
 	}
 	
 	boolean firstAck = false;
@@ -246,14 +251,18 @@ public class TPCMaster {
     if (!validAck)
     {
         System.out.println("Should not occur: Slave did not respond with an ack");
+        masterCacheLock.unlock();
         throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
     }
 	if (firstReply.getMsgType().equals(ABORT)) {
+        masterCacheLock.unlock();
 	    throw new KVException(firstReply.getMessage());
 	}
 	if (secondReply.getMsgType().equals(ABORT)) {
+        masterCacheLock.unlock();
 	    throw new KVException(secondReply.getMessage());
 	}
+    masterCacheLock.unlock();
     }
 
     /**
