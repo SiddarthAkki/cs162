@@ -36,18 +36,18 @@ public class TPCMaster {
         this.masterCache = cache;
         this.slaveLock = new ReentrantLock();
         this.slaveCondition = slaveLock.newCondition();
-	this.slaves = new TreeMap<Long, TPCSlaveInfo>(new Comparator<Long>() {
-		public int compare(Long first, Long second) {
-		    boolean comp1 = TPCMaster.isLessThanUnsigned(first, second);
-		    boolean comp2 = TPCMaster.isLessThanEqualUnsigned(first, second);
-		    if (comp1) {
-			return -1;
-		    } else if (comp2) {
-			return 0;
-		    } else {
-			return 1;
-		    }
-		}
+        this.slaves = new TreeMap<Long, TPCSlaveInfo>(new Comparator<Long>() {
+            public int compare(Long first, Long second) {
+                boolean comp1 = TPCMaster.isLessThanUnsigned(first, second);
+                boolean comp2 = TPCMaster.isLessThanEqualUnsigned(first, second);
+                if (comp1) {
+                    return -1;
+                } else if (comp2) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
 	    });
     }
 
@@ -121,15 +121,15 @@ public class TPCMaster {
      * @return SlaveInfo of first replica
      */
     public TPCSlaveInfo findFirstReplica(String key) {
-    slaveLock.lock();
-	long keyhash = TPCMaster.hashTo64bit(key);
-	Long replicaKey = this.slaves.ceilingKey(keyhash);
-	if (replicaKey == null) {
-	    replicaKey = this.slaves.firstKey();
-	}
-    TPCSlaveInfo returnInfo = this.slaves.get(replicaKey);
-    slaveLock.unlock();
-	return returnInfo;
+        slaveLock.lock();
+        long keyhash = TPCMaster.hashTo64bit(key);
+        Long replicaKey = this.slaves.ceilingKey(keyhash);
+        if (replicaKey == null) {
+            replicaKey = this.slaves.firstKey();
+        }
+        TPCSlaveInfo returnInfo = this.slaves.get(replicaKey);
+        slaveLock.unlock();
+        return returnInfo;
     }
 
     /**
@@ -138,22 +138,23 @@ public class TPCMaster {
      * @param firstReplica SlaveInfo of primary replica
      * @return SlaveInfo of successor replica
      */
-    public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica) {
-    slaveLock.lock();
-	Long nextKey = this.slaves.higherKey(firstReplica.getSlaveID());
-	if (nextKey == null) {
-	    nextKey = this.slaves.firstKey();
-	}
-    TPCSlaveInfo returnInfo = this.slaves.get(nextKey);
-    slaveLock.unlock();
-	return returnInfo;
+    public TPCSlaveInfo findSuccessor(TPCSlaveInfo firstReplica)
+    {
+        slaveLock.lock();
+        Long nextKey = this.slaves.higherKey(firstReplica.getSlaveID());
+        if (nextKey == null) {
+            nextKey = this.slaves.firstKey();
+        }
+        TPCSlaveInfo returnInfo = this.slaves.get(nextKey);
+        slaveLock.unlock();
+        return returnInfo;
     }
 
     /**
      * @return The number of slaves currently registered.
      */
     public int getNumRegisteredSlaves() {
-	return this.slaves.size();
+        return this.slaves.size();
     }
 
     /**
@@ -161,7 +162,7 @@ public class TPCMaster {
      * @return The requested TPCSlaveInfo if present, otherwise null.
      */
     public TPCSlaveInfo getSlave(long slaveId) {
-	return this.slaves.get(slaveId);
+        return this.slaves.get(slaveId);
     }
 
     /**
@@ -175,94 +176,93 @@ public class TPCMaster {
      * @param isPutReq boolean to distinguish put and del requests
      * @throws KVException if the operation cannot be carried out for any reason
      */
-    public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq)
-            throws KVException {
-    Lock masterCacheLock = masterCache.getLock(msg.getKey());
-    masterCacheLock.lock();
-	TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
-	TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
-	Socket contactFirst = firstSlave.connectHost(TIMEOUT);
-	Socket contactSecond = secondSlave.connectHost(TIMEOUT);
-	KVMessage firstReply;
-	KVMessage secondReply;
-	try {
-	    msg.sendMessage(contactFirst);
-	    firstReply = new KVMessage(contactFirst, TIMEOUT);
-	} catch (KVException e) {
-	    firstReply = new KVMessage(ABORT, e.getMessage());
-	}
+    public synchronized void handleTPCRequest(KVMessage msg, boolean isPutReq) throws KVException {
+        Lock masterCacheLock = masterCache.getLock(msg.getKey());
+        masterCacheLock.lock();
+        TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
+        TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
+        Socket contactFirst = firstSlave.connectHost(TIMEOUT);
+        Socket contactSecond = secondSlave.connectHost(TIMEOUT);
+        KVMessage firstReply;
+        KVMessage secondReply;
+        try {
+            msg.sendMessage(contactFirst);
+            firstReply = new KVMessage(contactFirst, TIMEOUT);
+        } catch (KVException e) {
+            firstReply = new KVMessage(ABORT, e.getMessage());
+        }
 
-	try {
-	    msg.sendMessage(contactSecond);
-	    secondReply = new KVMessage(contactSecond, TIMEOUT);
-	} catch (KVException e) {
-	    secondReply = new KVMessage(ABORT, e.getMessage());
-	}
+        try {
+            msg.sendMessage(contactSecond);
+            secondReply = new KVMessage(contactSecond, TIMEOUT);
+        } catch (KVException e) {
+            secondReply = new KVMessage(ABORT, e.getMessage());
+        }
 
-	KVMessage globalDecision;
-	if (firstReply.getMsgType().equals(ABORT) || secondReply.getMsgType().equals(ABORT)) {
-	    globalDecision = new KVMessage(ABORT);
-	} else {
-	    globalDecision = new KVMessage(COMMIT);
+        KVMessage globalDecision;
+        if (firstReply.getMsgType().equals(ABORT) || secondReply.getMsgType().equals(ABORT)) {
+            globalDecision = new KVMessage(ABORT);
+        } else {
+            globalDecision = new KVMessage(COMMIT);
+            
+            if (isPutReq)
+            {
+                masterCache.put(msg.getKey(), msg.getValue());
+            }
+            else
+            {
+                masterCache.del(msg.getKey());
+            }
+           
+        }
         
-        if (isPutReq)
-        {
-            masterCache.put(msg.getKey(), msg.getValue());
+        boolean firstAck = false;
+        boolean secondAck = false;
+        boolean validAck = true;
+        Socket firstPhaseTwoConnection;
+        Socket secondPhaseTwoConnection;
+        KVMessage firstPhaseTwoReply;
+        KVMessage secondPhaseTwoReply;
+        while (!firstAck) {
+            try {
+                firstSlave = findFirstReplica(msg.getKey());
+                firstPhaseTwoConnection = firstSlave.connectHost(TIMEOUT);
+                globalDecision.sendMessage(firstPhaseTwoConnection);
+                firstPhaseTwoReply = new KVMessage(firstPhaseTwoConnection, TIMEOUT);
+                if (!firstPhaseTwoReply.getMsgType().equals(ACK)) {
+                    validAck = false;
+                }
+                firstAck = true;
+            } catch (KVException e) {}
         }
-        else
-        {
-            masterCache.del(msg.getKey());
-        }
-       
-	}
-	
-	boolean firstAck = false;
-	boolean secondAck = false;
-    boolean validAck = true;
-	Socket firstPhaseTwoConnection;
-	Socket secondPhaseTwoConnection;
-	KVMessage firstPhaseTwoReply;
-	KVMessage secondPhaseTwoReply;
-	while (!firstAck) {
-	    try {
-        firstSlave = findFirstReplica(msg.getKey());
-		firstPhaseTwoConnection = firstSlave.connectHost(TIMEOUT);
-		globalDecision.sendMessage(firstPhaseTwoConnection);
-		firstPhaseTwoReply = new KVMessage(firstPhaseTwoConnection, TIMEOUT);
-        if (!firstPhaseTwoReply.getMsgType().equals(ACK)) {
-            validAck = false;
-        }
-		firstAck = true;
-	    } catch (KVException e) {}
-	}
 
-	while (!secondAck) {
-	    try {
-        secondSlave = findSuccessor(firstSlave);
-		secondPhaseTwoConnection = secondSlave.connectHost(TIMEOUT);
-		globalDecision.sendMessage(secondPhaseTwoConnection);
-		secondPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
-        if (!secondPhaseTwoReply.getMsgType().equals(ACK)) {
-            validAck = false;
+        while (!secondAck) {
+            try {
+                secondSlave = findSuccessor(firstSlave);
+                secondPhaseTwoConnection = secondSlave.connectHost(TIMEOUT);
+                globalDecision.sendMessage(secondPhaseTwoConnection);
+                secondPhaseTwoReply = new KVMessage(secondPhaseTwoConnection, TIMEOUT);
+                if (!secondPhaseTwoReply.getMsgType().equals(ACK)) {
+                    validAck = false;
+                }
+                secondAck = true;
+            } catch (KVException e) {}
         }
-		secondAck = true;
-	    } catch (KVException e) {}
-	}
-    if (!validAck)
-    {
-        System.out.println("Should not occur: Slave did not respond with an ack");
+        if (!validAck)
+        {
+            System.out.println("Should not occur: Slave did not respond with an ack");
+            masterCacheLock.unlock();
+            throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
+        }
+        if (firstReply.getMsgType().equals(ABORT)) {
+            masterCacheLock.unlock();
+            throw new KVException(firstReply.getMessage());
+        }
+        if (secondReply.getMsgType().equals(ABORT)) {
+            masterCacheLock.unlock();
+            throw new KVException(secondReply.getMessage());
+        }
         masterCacheLock.unlock();
-        throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
-    }
-	if (firstReply.getMsgType().equals(ABORT)) {
-        masterCacheLock.unlock();
-	    throw new KVException(firstReply.getMessage());
-	}
-	if (secondReply.getMsgType().equals(ABORT)) {
-        masterCacheLock.unlock();
-	    throw new KVException(secondReply.getMessage());
-	}
-    masterCacheLock.unlock();
     }
 
     /**
@@ -326,14 +326,14 @@ public class TPCMaster {
     }
 
     private KVMessage contactSlave(TPCSlaveInfo slave, String key) throws KVException {
-      KVMessage recvMsg;
-      Socket slaveSock = slave.connectHost(TIMEOUT);
-      KVMessage msg = new KVMessage(GET_REQ);
-      msg.setKey(key);
-      msg.sendMessage(slaveSock);
-      recvMsg = new KVMessage(slaveSock, TIMEOUT);
-      slave.closeHost(slaveSock);
-      return recvMsg;
+        KVMessage recvMsg;
+        Socket slaveSock = slave.connectHost(TIMEOUT);
+        KVMessage msg = new KVMessage(GET_REQ);
+        msg.setKey(key);
+        msg.sendMessage(slaveSock);
+        recvMsg = new KVMessage(slaveSock, TIMEOUT);
+        slave.closeHost(slaveSock);
+        return recvMsg;
     }
 
 }
