@@ -47,7 +47,7 @@ public class TPCRegistrationHandler implements NetworkHandler {
         try {
             message = new KVMessage(slave);
         } catch (KVException e) {
-            message = new KVMessage(RESP, e.getKVMessage().getMessage());
+            message = new KVMessage(RESP, e.getMessage());
             try {
                 message.sendMessage(slave);
             } catch (KVException f) {}
@@ -57,7 +57,7 @@ public class TPCRegistrationHandler implements NetworkHandler {
             return;
         }
 
-    threadpool.addJob(this.new TPCRequestRunnable(message, slave));
+	threadpool.addJob(this.new TPCRequestRunnable(message, slave));
     }
     
     private class TPCRequestRunnable implements Runnable {
