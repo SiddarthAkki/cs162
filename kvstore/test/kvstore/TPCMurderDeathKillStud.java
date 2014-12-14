@@ -589,10 +589,10 @@ public class TPCMurderDeathKillStud {
         try{startMockSlave(SLAVE1, 3);} catch (Exception e) {fail("can't start slave");}
         //Note: george will be put in twice
         try {
-        slave1.put("george", "yiu");
+            slave1.put("george", "yiu");
         }
         catch (KVException e) {
-        fail("Should succeed");
+            fail("Should succeed");
         }
         delDeath.setKey("george");
         try{
@@ -611,9 +611,9 @@ public class TPCMurderDeathKillStud {
 
         //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
         try{
-        master.handleTPCRequest(verify,true);
+            master.handleTPCRequest(verify,true);
         assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
-        verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
+            verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
         } catch (KVException e){
             fail("Put on live slave shouldn't fail");
         }
@@ -623,7 +623,7 @@ public class TPCMurderDeathKillStud {
         try{
         assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
         } catch (KVException e){
-        fail("Server not properly rebuilt.");
+            fail("Server not properly rebuilt.");
         }
         try{
             System.out.println(slave1.get("george"));
