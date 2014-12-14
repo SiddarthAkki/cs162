@@ -393,5 +393,51 @@ public class TPCMurderDeathKillStud {
 
     }
 
-  
+    @Test(timeout = 30000)
+    @Category(AG_PROJ4_CODE.class)
+    public void testDelDeathAfterLog(){
+        try{startMockSlave(SLAVE1, 1);} catch (Exception e) {fail("can't start slave");}
+        
+        delDeath.setKey("george");
+        try{
+            master.handleTPCRequest(delDeath, true);
+            fail("Shouldn't succeed");
+        } catch (KVException e){
+
+        }
+        checkBuild();
+        try{
+            slave1.get("george");
+        }
+        catch(KVException e){
+            fail("Key should still be present");
+        }
+
+        //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
+        try{
+            master.handleTPCRequest(verify,true);
+        assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+            verify(spyLog, atLeast(2)).appendAndFlush((KVMessage) anyObject());
+        } catch (KVException e){
+            fail("Put on live slave shouldn't fail");
+        }
+
+        try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
+        checkBuild();
+        try{
+        assertTrue(slave1.get("6666666666666666667").equals("demolition man"));
+        } catch (KVException e){
+            fail("Server not properly rebuilt.");
+        }
+        try{
+            slave1.get("george");
+        }
+        catch(KVException e){
+            fail("Key should still be present");
+        }
+
+        //set back to what it was in the constructor
+        delDeath.setKey(KEY1);
+    }
+
 }
