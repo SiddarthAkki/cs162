@@ -308,6 +308,10 @@ public class TPCMaster {
             TPCSlaveInfo secondRep = findSuccessor(firstRep);
             try {
               recvMsg = contactSlave(secondRep, key);
+            } catch(Exception e) {
+                masterLock.unlock();
+                throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
+            }
               value = recvMsg.getValue();
               if (value != null) {
                 this.masterCache.put(key, value);
@@ -317,10 +321,7 @@ public class TPCMaster {
                 masterLock.unlock();
                 throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
               }
-            } catch(Exception e) {
-              masterLock.unlock();
-              throw new KVException(KVConstants.ERROR_NO_SUCH_KEY);
-            }
+            
         }
     }
 
