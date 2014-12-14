@@ -455,9 +455,7 @@ public class TPCLogTest {
 
     /* BEGIN TEST CASE*/
 
-    @Test(timeout = 30000)
-    @Category(AG_PROJ4_CODE.class)
-    @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
+    @Test
     public void testP1DeathAfterLogAbort(){
         try{startMockSlaveAbort(SLAVE1, 1);} catch (Exception e) {fail("can't start slave");}
         try{
@@ -501,16 +499,14 @@ public class TPCLogTest {
 
     }
 
-     @Test(timeout = 30000)
-     @Category(AG_PROJ4_CODE.class)
-     @AGTestDetails(points = 2, desc = "Kills the slave during phase 1 after flushing PUT request to log and rebuilds. Checks that the PUT request was aborted.")
+     @Test
      public void testP1DeathAfterLogAllAborts(){
          try{startMockSlaveUneven(SLAVE1, 1);} catch (Exception e) {fail("can't start slave");}
          try{
              master.handleTPCRequest(p1Death, true);
              fail("Shouldn't succeed");
          } catch (KVException e){
-    
+
          }
          checkBuild();
          try{
@@ -520,7 +516,7 @@ public class TPCLogTest {
          catch(KVException e){
              assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
          }
-    
+
          //Verify log integrity by putting a key successfully, then killing and rebuilding slave.
          try{
              master.handleTPCRequest(verify,true);
@@ -529,7 +525,7 @@ public class TPCLogTest {
          } catch (KVException e){
              fail("Put on live slave shouldn't fail");
          }
-    
+
          try {necromancy(SLAVE1, LOG);} catch (Exception e) {fail("Could not rebuild slave.");}
          checkBuild();
          try{
@@ -544,7 +540,7 @@ public class TPCLogTest {
          catch(KVException e){
              assertTrue(e.getKVMessage().getMessage().equals(KVConstants.ERROR_NO_SUCH_KEY));
          }
-    
+
      }
 
 
