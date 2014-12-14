@@ -123,7 +123,7 @@ public class TPCMaster {
     public TPCSlaveInfo findFirstReplica(String key) {
     slaveLock.lock();
 	long keyhash = TPCMaster.hashTo64bit(key);
-	Long replicaKey = this.slaves.higherKey(keyhash);
+	Long replicaKey = this.slaves.ceilingKey(keyhash);
 	if (replicaKey == null) {
 	    replicaKey = this.slaves.firstKey();
 	}
