@@ -150,7 +150,7 @@ public class TPCMasterHandler implements NetworkHandler {
 
                 } else if (reqName.equals(COMMIT) || reqName.equals(ABORT)) {
                     KVMessage lastEntry = this.tpcLog.getLastEntry();
-                    if (!(lastEntry.getMsgType().equals(COMMIT) || lastEntry.getMsgType().equals(ABORT))) {
+                    if (!(lastEntry == null || lastEntry.getMsgType().equals(COMMIT) || lastEntry.getMsgType().equals(ABORT))) {
                         this.tpcLog.appendAndFlush(request);
                         if (reqName.equals(COMMIT)) {
                             try {
