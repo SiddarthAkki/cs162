@@ -181,20 +181,24 @@ public class TPCMaster {
         masterCacheLock.lock();
         TPCSlaveInfo firstSlave = findFirstReplica(msg.getKey());
         TPCSlaveInfo secondSlave = findSuccessor(firstSlave);
-        Socket contactFirst = firstSlave.connectHost(TIMEOUT);
-        Socket contactSecond = secondSlave.connectHost(TIMEOUT);
+        Socket contactFirst;
+        Socket contactSecond;
         KVMessage firstReply;
         KVMessage secondReply;
         try {
+            contactFirst = firstSlave.connectHost(TIMEOUT);
             msg.sendMessage(contactFirst);
             firstReply = new KVMessage(contactFirst, TIMEOUT);
+            firstSlave.closeHost(contactFirst);
         } catch (KVException e) {
             firstReply = new KVMessage(ABORT, e.getMessage());
         }
 
         try {
+            contactSecond = secondSlave.connectHost(TIMEOUT);
             msg.sendMessage(contactSecond);
             secondReply = new KVMessage(contactSecond, TIMEOUT);
+            secondSlave.closeHost(contactSecond);
         } catch (KVException e) {
             secondReply = new KVMessage(ABORT, e.getMessage());
         }
@@ -233,6 +237,7 @@ public class TPCMaster {
                     validAck = false;
                 }
                 firstAck = true;
+                firstSlave.closeHost(firstPhaseTwoConnection);
             } catch (KVException e) {}
         }
 
@@ -246,11 +251,13 @@ public class TPCMaster {
                     validAck = false;
                 }
                 secondAck = true;
+                secondSlave.closeHost(secondPhaseTwoConnection);
             } catch (KVException e) {}
         }
+        
         if (!validAck)
         {
-            System.out.println("Should not occur: Slave did not respond with an ack");
+            //System.out.println("Should not occur: Slave did not respond with an ack");
             masterCacheLock.unlock();
             throw new KVException(KVConstants.ERROR_INVALID_FORMAT);
         }
